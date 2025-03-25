@@ -5,8 +5,10 @@
     "dtype",
     "HNSW",
     "NUMPY",
+    "tfjs",
     "tkyo",
     "tolist",
     "Xenova"
-  ]
+  ],
+  "postman.settings.dotenv-detection-notification-visibility": false
 }

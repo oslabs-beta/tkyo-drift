@@ -1,20 +1,32 @@
-import fs from 'fs'
-
-function readVectorsFromBin(filePath, vectorSize){
-  
-}
-
 // * Calculate the Reference Model's Input/Output Baseline Value
-export default function getBaseline(vectors) {
-  const result = [];
-  for (let i = 0; i < vectors[0].length; i++) {
-    result[i] =
-      vectors.reduce(
-        (accumulator, currentValue) => accumulator + currentValue[i],
-        0
-      ) / vectors.length;
+export default function getBaseline(files, data) {
+  // Make a results object to hold the data
+  const resultsObject = {};
+
+  // Iterate through each file to get the vectors
+  for (const keys in files) {
+
+    // Get the array of arrays of vectors from each file
+    const vectors = files[keys];
+
+    // Initialize and empty array to house the Mean Value of the input arrays
+    const result = [];
+
+    // Iterate through each array, and get the average for the set
+    for (let i = 0; i < vectors[0].length; i++) {
+      result[i] =
+        vectors.reduce(
+          (accumulator, currentValue) => accumulator + currentValue[i],
+          0
+        ) / vectors.length;
+    }
+
+    // Push the result array into the results object
+    resultsObject[keys] = result;
   }
-  return result;
+
+  // Return the results
+  return resultsObject;
 }
 
 // * After spending a few hours with GPT and reading, here is some pseudocode for an HNSW NNS
@@ -51,15 +63,15 @@ If similarity is low → possible semantic drift
 // * in all of these cases except #1, the K represents the number of vectors with highest cosine similarity
 
 // TODO: Pick one or more methods for getting K
-// * After reading up a bit, we have some options: 
+// * After reading up a bit, we have some options:
 // 1. We could compute the mean of K where K is the entire data set //!(NO HNSW Required)
 // 2. We could compute the mean of K nearest Neighbors //!(K is a fixed number)
 // 3. We could compute the mean of several K values simultaneously, and then "evaluate stability" (10, 25, 50, 100)  //!See Excalidraw (near chart) for explanation
 // 4. We could compute the mean of K where K is a % of total vectors (5%, 10%)
 // 5. We could compute the mean of K where K is the square root of the total data size (223 of 50k, 30 for 1000)
 // 6. We could compute the mean of K where K is determined by a clustering algorithm (like k-means) //!Requires offline computation step (ie, nightly CronJob)
-  
-// ? if we are checking cosine similarities, then don't we need to know what K is before we 
+
+// ? if we are checking cosine similarities, then don't we need to know what K is before we
 // NO. Why? Because the HNSW index is built specifically to find the nearest neighbors for a given input vector, using cosine similarity (or another distance metric)
 // This means that THIS file needs to import 'getCosSimilarity' it as a dependency, since the HNSW will need to invoke it 100s or 1000s of times.
 
@@ -98,4 +110,3 @@ Call index.readIndex(filePath, maxElements)
 maxElements is the number of elements the index will contain — should match or exceed what you originally built
 After that, the index is ready for use — no need to re-add points manually.
 */
-

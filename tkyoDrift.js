@@ -46,11 +46,10 @@ import path from 'path';
 import { v4 } from 'uuid';
 import makeEmbedding from './util/1-makeEmbedding.js';
 import saveEmbeddings from './util/2-saveEmbeddings.js';
+import readVectorsFromBin from './util/3-readBinFiles.js';
 import getBaseline from './util/4-getBaseline.js';
 import getSimilarity from './util/5-getCosSimilarity.js';
 import makeLogEntry from './util/6-makeLogEntry.js';
-import { input } from '@tensorflow/tfjs-node-gpu';
-// import readVectorsFromBin from './util/3-readBinFiles.js';
 
 // * Global Variables for the utilities
 
@@ -62,9 +61,9 @@ export const MODELS = {
 // Number of floating point decimals to keep
 export const PRECISION_VALUE = 6;
 // Upper limit on I/Os to capture for the training data baseline (this is ignored when using the batch call)
-export const TRAINING_MAX_SIZE = 10000;
+export const TRAINING_MAX_SIZE = Math.max(10000, 0);
 // Upper limit on I/Os to capture for the rolling data baseline (this is never ignored) //TODO: Do we want to delete old records from this or just add new ones (and filter in the log?)
-export const ROLLING_MAX_SIZE = 1000;
+export const ROLLING_MAX_SIZE = Math.max(1, 0);
 // Location to save data files
 export const OUTPUT_DIR = path.resolve('./data'); // TODO: I don't know if this path.resolve works, this needs to be tested.
 
@@ -91,22 +90,12 @@ export default async function tkyoDrift(input, output) {
   // * INPUT:
   // Get embedding from input data
   const inputEmbedding = await makeEmbedding(input);
-  // console.log('Input Make Embedding: ', inputEmbedding);
 
   // * OUTPUT:
   // Get embedding from output data
   const outputEmbedding = await makeEmbedding(output);
-  // console.log('Output Make Embedding: ', outputEmbedding);
 
   // ------------- << Save Data >> -------------
-  // Check the to see if the results are an array
-  // if (!inputEmbedding.modelOutput[0] || !outputEmbedding.modelOutput[0]) {
-  //   console.error(
-  //     '➡️ Saving failed: Data sent to Save Function is not a Vector.'
-  //   );
-  //   return null;
-  // }
-
   // Check if directory exists
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -115,71 +104,47 @@ export default async function tkyoDrift(input, output) {
   // Append input vector to Rolling Input JSONL
   saveEmbeddings('input', inputEmbedding);
 
+
   // * OUTPUT:
   // Append output vector to Rolling Output JSONL
   saveEmbeddings('output', outputEmbedding);
 
   // ------------- << Read Bin Files >> -------------
-  // console.log(Object.values(inputEmbedding)[1].length);
   // * INPUT:
-
-  // code for getting the length of arrays and their associated keys
-  // const outputObj = {}
-  //   for (const key in obj){
-  //   outputObj.key = obj.key.length
-  // }
-
-  // readVectorsFromBin('input', );
+  // Read and assemble Input Vectors from Bin Files
+  const inputFiles = readVectorsFromBin('input', inputEmbedding);
 
   // * OUTPUT:
-  // readVectorsFromBin('output');
+  // Read and assemble Output Vectors from Bin Files
+  const outputFiles = readVectorsFromBin('output', outputEmbedding);
 
   // ------------- << Get Baseline >> -------------
   // * INPUT:
   // Get input baselines from Input Parquet
-  // const inputBaselines = await getBaseline(input);
-
+  const inputBaselines = getBaseline(inputFiles, input);
   // * OUTPUT:
   // Get output baselines from Output Parquet
-  // const outputBaselines = await getBaseline(output);
-
+  const outputBaselines = getBaseline(outputFiles, output);
+  
   // ------------- << Get Cosine Similarity >> -------------
-  // TODO: Need to invoke this function once per embedding type (Semantic/concept/etc)
-  // Rather than once per input. OR modify the function to run iteratively
   // * INPUT:
   // Compare input vector to Input baselines
-  // const inputSimilarity = getSimilarity(inputEmbedding, inputBaselines);
+  const inputSimilarity = getSimilarity(inputEmbedding, inputBaselines);
 
   // * OUTPUT:
   // Compare output vector to Output baselines
-  // const outputSimilarity = getSimilarity(outputBaselines, outputBaselines);
+  const outputSimilarity = getSimilarity(outputEmbedding, outputBaselines);
 
   // ------------- << Make & Append Log Entries >> -------------
-  // Make shared ID and date for I/O Pair
-  // const sharedID = v4();
-  // TODO: This is missing semantic/concept
-  // * INPUT:
+    // Make shared ID and date for I/O Pair
+    const sharedID = v4();
+
+  // * INPUT & OUTPUT:
   // Append input results to Log
-  // makeLogEntry({
-  //   id: sharedID,
-  //   ioType: 'input',
-  //   rollingCos: inputSimilarity.rollingCos,
-  //   trainingCos: inputSimilarity.trainingCos,
-  // idealCos: inputSimilarity.idealCos, //? Stretch Goal
-  // });
-
-  // * OUTPUT:
-  // Append output results to log
-  // makeLogEntry({
-  //   id: sharedID,
-  //   ioType: 'output',
-  //   rollingCos: outputSimilarity.rollingCos,
-  //   trainingCos: outputSimilarity.trainingCos,
-  // idealCos: outputSimilarity.idealCos, //? Stretch Goal
-  // });
-
+  makeLogEntry(sharedID, inputSimilarity, outputSimilarity);
+  
   // End Stopwatch (Comment this out in production)
   console.timeEnd('Drift Analyzer Full Run');
 }
 
-tkyoDrift('Hello World', 'Good Morning!');
+tkyoDrift('milti likes moms', 'sally sold seashells by the sea shore');

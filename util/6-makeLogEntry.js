@@ -1,28 +1,50 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { OUTPUT_DIR } from '../tkyoDrift.js';
 
 // TODO: I got lazy and had GPT write this, it feels like there is a mistake here? We are rebuilding __dirname
-// Reconstruct __dirname in ES6
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-// Construct the destination to the log in the data folder
-const DEFAULT_LOG_FILE = path.join(__dirname, '..', 'data', 'drift_log.csv');
 
 export default function makeLogEntry(
-  { id, ioType, rollingCos, trainingCos, idealCos },
-  logFilePath = DEFAULT_LOG_FILE
+  id,
+  inputSimilarityObject,
+  outputSimilarityObject
 ) {
-  const timestamp = new Date().toISOString(); 
-  const headers = 'ID,TIMESTAMP,I/O TYPE,ROLLING COS,TRAINING COS,IDEAL COS\n';
-  const row = `${id},${timestamp},${ioType},${rollingCos},${trainingCos},${idealCos}\n`;
+  // Construct the destination to the log in the data folder
+  const logPath = path.join(OUTPUT_DIR, 'drift_log.csv');
 
-  const fileExists = fs.existsSync(logFilePath);
+  const {
+    semanticinputRolling,
+    semanticinputTraining,
+    conceptinputRolling,
+    conceptinputTraining,
+  } = inputSimilarityObject;
+
+  const {
+    semanticoutputRolling,
+    semanticoutputTraining,
+    conceptoutputRolling,
+    conceptoutputTraining,
+  } = outputSimilarityObject;
+
+  const timestamp = new Date().toISOString();
+  const headers = `ID,TIMESTAMP,I/O TYPE,SEMANTIC ROLLING COS,SEMANTIC TRAINING COS,CONCEPT ROLLING COS,CONCEPT TRAINING COS\n`;
+  const inputRow = `${id},${timestamp},input,${semanticinputRolling},${semanticinputTraining},${conceptinputRolling},${conceptinputTraining}\n`;
+  const outputRow = `${id},${timestamp},output,${semanticoutputRolling},${semanticoutputTraining},${conceptoutputRolling},${conceptoutputTraining}\n`;
+
+  const fileExists = fs.existsSync(logPath);
 
   if (!fileExists) {
-    fs.writeFileSync(logFilePath, headers + row);
+    fs.writeFileSync(logPath, headers + inputRow + outputRow);
   } else {
-    fs.appendFileSync(logFilePath, row);
+    fs.appendFileSync(logPath, inputRow + outputRow);
   }
 }
+
+// {
+//   id: sharedID,
+//   ioType: 'input',
+//   rollingCos: inputSimilarity.rollingCos,
+//   trainingCos: inputSimilarity.trainingCos,
+// idealCos: inputSimilarity.idealCos, //? Stretch Goal
+// }
