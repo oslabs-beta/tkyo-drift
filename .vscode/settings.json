@@ -3,6 +3,7 @@
     "descr",
     "distilroberta",
     "dtype",
+    "HNSW",
     "NUMPY",
     "tkyo",
     "tolist",

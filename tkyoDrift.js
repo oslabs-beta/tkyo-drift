@@ -41,21 +41,23 @@
 @@@@@@@@@@@@@@@@@%+:--::=****=:..::-. ......       ...:::::..........................                                       Tico, Milti, Anthony, Wing, Monique                                                                                    .        
 @%%%####******+++++++++=============------:::::.............                                                   ...............................::::::::::::::::::::::------=====+++++++*******#######%%%%%%@@@@@@@        
 @@@@@@@@@@@@@@@@@@%%%##############%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@*/
+import fs from 'fs';
 import path from 'path';
 import { v4 } from 'uuid';
 import makeEmbedding from './util/1-makeEmbedding.js';
 import saveEmbeddings from './util/2-saveEmbeddings.js';
-import getBaseline from './util/3-getBaseline.js';
-import getSimilarity from './util/4-getCosSimilarity.js';
-import makeLogEntry from './util/5-makeLogEntry.js';
+import getBaseline from './util/4-getBaseline.js';
+import getSimilarity from './util/5-getCosSimilarity.js';
+import makeLogEntry from './util/6-makeLogEntry.js';
 import { input } from '@tensorflow/tfjs-node-gpu';
+// import readVectorsFromBin from './util/3-readBinFiles.js';
 
 // * Global Variables for the utilities
 
 //  Models to embed the I/O Data
 export const MODELS = {
-  concept: 'Xenova/all-MiniLM-L6-v2',
-  semantic: 'Xenova/distilroberta-base',
+  semantic: 'Xenova/all-MiniLM-L6-v2',
+  concept: 'Xenova/distilroberta-base',
 };
 // Number of floating point decimals to keep
 export const PRECISION_VALUE = 6;
@@ -64,84 +66,120 @@ export const TRAINING_MAX_SIZE = 10000;
 // Upper limit on I/Os to capture for the rolling data baseline (this is never ignored) //TODO: Do we want to delete old records from this or just add new ones (and filter in the log?)
 export const ROLLING_MAX_SIZE = 1000;
 // Location to save data files
-export const OUTPUT_DIR = path.resolve('../data'); // TODO: I don't know if this path.resolve works, this needs to be tested.
+export const OUTPUT_DIR = path.resolve('./data'); // TODO: I don't know if this path.resolve works, this needs to be tested.
 
 export default async function tkyoDrift(input, output) {
-  console.log('User Input: ', input)
-  console.log('AI Output: ', output)
+  console.log('User Input: ', input);
+  console.log('AI Output: ', output);
   // Stopwatch
-  console.time('Drift Analyzer Full Run:');
+  console.time('Drift Analyzer Full Run');
 
   // ------------- << Get Embeddings >> -------------
+  // Check the data type of the input
+  if (
+    typeof input !== 'string' ||
+    input.trim() === '' ||
+    typeof output !== 'string' ||
+    output.trim() === ''
+  ) {
+    console.error(
+      '↗️ Embedding failed: Data sent to embedding model is not a non-empty string.'
+    );
+    return null;
+  }
+
   // * INPUT:
   // Get embedding from input data
-  const inputEmbedding = makeEmbedding(input);
+  const inputEmbedding = await makeEmbedding(input);
+  // console.log('Input Make Embedding: ', inputEmbedding);
 
   // * OUTPUT:
   // Get embedding from output data
-  const outputEmbedding = makeEmbedding(output);
+  const outputEmbedding = await makeEmbedding(output);
+  // console.log('Output Make Embedding: ', outputEmbedding);
 
   // ------------- << Save Data >> -------------
+  // Check the to see if the results are an array
+  // if (!inputEmbedding.modelOutput[0] || !outputEmbedding.modelOutput[0]) {
+  //   console.error(
+  //     '➡️ Saving failed: Data sent to Save Function is not a Vector.'
+  //   );
+  //   return null;
+  // }
+
+  // Check if directory exists
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  }
   // * INPUT:
   // Append input vector to Rolling Input JSONL
-  saveEmbeddings({
-    embeddings: inputEmbedding,
-    ioType: 'input',
-  });
+  saveEmbeddings('input', inputEmbedding);
 
   // * OUTPUT:
   // Append output vector to Rolling Output JSONL
-  saveEmbeddings({
-    embeddings: outputEmbedding,
-    ioType: 'output',
-  });
+  saveEmbeddings('output', outputEmbedding);
+
+  // ------------- << Read Bin Files >> -------------
+  // console.log(Object.values(inputEmbedding)[1].length);
+  // * INPUT:
+
+  // code for getting the length of arrays and their associated keys
+  // const outputObj = {}
+  //   for (const key in obj){
+  //   outputObj.key = obj.key.length
+  // }
+
+  // readVectorsFromBin('input', );
+
+  // * OUTPUT:
+  // readVectorsFromBin('output');
 
   // ------------- << Get Baseline >> -------------
   // * INPUT:
   // Get input baselines from Input Parquet
-  const inputBaselines = await getBaseline(input);
+  // const inputBaselines = await getBaseline(input);
 
   // * OUTPUT:
   // Get output baselines from Output Parquet
-  const outputBaselines = await getBaseline(output);
+  // const outputBaselines = await getBaseline(output);
 
   // ------------- << Get Cosine Similarity >> -------------
   // TODO: Need to invoke this function once per embedding type (Semantic/concept/etc)
   // Rather than once per input. OR modify the function to run iteratively
   // * INPUT:
   // Compare input vector to Input baselines
-  const inputSimilarity = getSimilarity(inputEmbedding, inputBaselines);
+  // const inputSimilarity = getSimilarity(inputEmbedding, inputBaselines);
 
   // * OUTPUT:
   // Compare output vector to Output baselines
-  const outputSimilarity = getSimilarity(outputBaselines, outputBaselines);
+  // const outputSimilarity = getSimilarity(outputBaselines, outputBaselines);
 
   // ------------- << Make & Append Log Entries >> -------------
   // Make shared ID and date for I/O Pair
-  const sharedID = v4();
+  // const sharedID = v4();
   // TODO: This is missing semantic/concept
   // * INPUT:
   // Append input results to Log
-  makeLogEntry({
-    id: sharedID,
-    ioType: 'input',
-    rollingCos: inputSimilarity.rollingCos,
-    trainingCos: inputSimilarity.trainingCos,
-    // idealCos: inputSimilarity.idealCos, //? Stretch Goal
-  });
+  // makeLogEntry({
+  //   id: sharedID,
+  //   ioType: 'input',
+  //   rollingCos: inputSimilarity.rollingCos,
+  //   trainingCos: inputSimilarity.trainingCos,
+  // idealCos: inputSimilarity.idealCos, //? Stretch Goal
+  // });
 
   // * OUTPUT:
   // Append output results to log
-  makeLogEntry({
-    id: sharedID,
-    ioType: 'output',
-    rollingCos: outputSimilarity.rollingCos,
-    trainingCos: outputSimilarity.trainingCos,
-    // idealCos: outputSimilarity.idealCos, //? Stretch Goal
-  });
+  // makeLogEntry({
+  //   id: sharedID,
+  //   ioType: 'output',
+  //   rollingCos: outputSimilarity.rollingCos,
+  //   trainingCos: outputSimilarity.trainingCos,
+  // idealCos: outputSimilarity.idealCos, //? Stretch Goal
+  // });
 
   // End Stopwatch (Comment this out in production)
-  console.timeEnd('Drift Analyzer Full Run:');
+  console.timeEnd('Drift Analyzer Full Run');
 }
 
-tkyoDrift('Hello World', 'Good Morning!')
+tkyoDrift('Hello World', 'Good Morning!');
