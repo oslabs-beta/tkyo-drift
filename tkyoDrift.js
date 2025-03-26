@@ -147,5 +147,7 @@ export default async function tkyoDrift(input, output) {
   console.timeEnd('Drift Analyzer Full Run');
 }
 //Temporary line to receive arguments from CLI when smoll.py invokes tkyoDrift.js
-const [,, input, output] = process.argv;
+// const [,, input, output] = process.argv;
+const input = 'How do you calculate the sum of an integral?'
+const output = 'Blue balloons are floating through space and time.'
 tkyoDrift(input, output);

@@ -1,10 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import {
-  OUTPUT_DIR,
-  ROLLING_MAX_SIZE,
-  TRAINING_MAX_SIZE,
-} from '../tkyoDrift.js';
+import { OUTPUT_DIR, ROLLING_MAX_SIZE } from '../tkyoDrift.js';
 
 export default function readVectorsFromBin(ioType, object) {
   // Create an empty return object
@@ -46,10 +42,13 @@ export default function readVectorsFromBin(ioType, object) {
     // Determine if we have less vectors than the rolling max size
     const rollingTotalVectors = Math.floor(rollingFloatArray.length / dims);
     const rollingVectorCount = Math.min(ROLLING_MAX_SIZE, rollingTotalVectors);
-    const rollingStartIndex = Math.max((rollingTotalVectors - rollingVectorCount - 1), 0);
+    const rollingStartIndex = Math.max(
+      rollingTotalVectors - rollingVectorCount - 1,
+      0
+    );
 
     // TODO: We set the rolling to 1, and then set the for loop to exclude the most recent entry
-    // and we still got data back. The expected output should have been an empty vector, since 
+    // and we still got data back. The expected output should have been an empty vector, since
     // there was only 1 vector to return and we explicitly excluded it.
 
     // For each dim length, push the numbers into a vector array

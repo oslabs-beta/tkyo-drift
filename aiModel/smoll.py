@@ -28,7 +28,7 @@ if tokenizer.pad_token is None:
 output = model.generate(
     input_ids, 
     attention_mask=attention_mask, 
-    max_length=100,
+    max_length=1000,
     pad_token_id=tokenizer.pad_token_id  # Explicitly set pad token
 )
 
