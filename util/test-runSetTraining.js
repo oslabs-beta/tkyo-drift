@@ -1,11 +1,13 @@
+import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import buildTrainingEmbeddings from '../tkyoDriftSetTraining.js';
+import tkyoDriftSetTrainings from '../tkyoDriftSetTraining.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Adjust this path to be relative to where you're running the script
+const datasetPath = path.resolve('./aiModel/smollthoughts_data/dataset.json');
 
-const jsonlPath = path.join(__dirname, '../aiModel/smollthoughts_data/dataset.jsonl');
+// Read and parse the dataset
+const rawData = fs.readFileSync(datasetPath, 'utf-8');
+const dataArray = JSON.parse(rawData);
 
-buildTrainingEmbeddings(jsonlPath)
-  .catch(err => console.error('❌ Error building embeddings:', err));
+// Run training ingestion
+tkyoDriftSetTrainings(dataArray);

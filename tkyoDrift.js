@@ -142,9 +142,10 @@ export default async function tkyoDrift(input, output) {
   // * INPUT & OUTPUT:
   // Append input results to Log
   makeLogEntry(sharedID, inputSimilarity, outputSimilarity);
-  
+
   // End Stopwatch (Comment this out in production)
   console.timeEnd('Drift Analyzer Full Run');
 }
-
-tkyoDrift('milti likes moms', 'sally sold seashells by the sea shore');
+//Temporary line to receive arguments from CLI when smoll.py invokes tkyoDrift.js
+const [,, input, output] = process.argv;
+tkyoDrift(input, output);

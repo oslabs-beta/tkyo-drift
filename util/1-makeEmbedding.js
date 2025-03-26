@@ -34,7 +34,6 @@ export default async function makeEmbedding(text) {
       }
     }
 
-    // console.log(output)
     // Return the output
     return output;
   } catch (error) {

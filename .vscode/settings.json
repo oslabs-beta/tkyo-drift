@@ -5,6 +5,7 @@
     "dtype",
     "HNSW",
     "NUMPY",
+    "smoll",
     "tfjs",
     "tkyo",
     "tolist",

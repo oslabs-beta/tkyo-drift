@@ -134,7 +134,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-aiModel/generate_embeddings.py
-aiModel/smoll.py
-aiModel/download_data.py
-aiModel/smollthoughts_data/convertJsonToJsonl.js
+
+
+data/concept_output.training.bin
+data/concept_input.training.bin
+data/semantic_output.training.bin
+data/semantic_input.training.bin
