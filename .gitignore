@@ -134,13 +134,3 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-
-
-data/concept_output.training.bin
-data/concept_input.training.bin
-data/semantic_output.training.bin
-data/semantic_input.training.bin
-data/concept_output.training.broken
-data/concept_input.training.broken
-data/semantic_output.training.broken
-data/semantic_input.training.broken

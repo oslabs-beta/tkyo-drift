@@ -54,8 +54,6 @@ export const MODELS = {
   semantic: 'Xenova/all-MiniLM-L6-v2',
   concept: 'Xenova/distilroberta-base',
 };
-// Number of floating point decimals to keep
-export const PRECISION_VALUE = 6;
 // Upper limit on I/Os to capture for the training data baseline (this is ignored when using the batch call)
 export const TRAINING_MAX_SIZE = Math.max(10000, 0);
 // Upper limit on I/Os to capture for the rolling data baseline (this is never ignored)
@@ -93,7 +91,7 @@ export default async function tkyoDrift(input, output) {
 
   //  ------------- << Initialize Model File Pathing >> -------------
   // * For each model, invoke set file path method
-  // ! NOTE: If training data is not supplied, use the training file
+  // ! NOTE: If training data is not supplied, it will use the rolling file's path
   // Yes, this is intentional, check the ReadMe for why...
   for (const model of Object.values(driftModels)) {
     model.setFilePath();
@@ -167,10 +165,8 @@ export default async function tkyoDrift(input, output) {
   console.timeEnd('Drift Analyzer Full Run');
   console.log(similarityResults);
 }
-//Temporary line to receive arguments from CLI when smoll.py invokes tkyoDrift.js
-const [,, input, output] = process.argv;
-// const input = 'How do you calculate the sum of an integral?';
-// const output = 'Blue balloons are floating through space and time.';
-console.time('External Drift Analyzer Full Run');
-await tkyoDrift(input, output);
-console.timeEnd('External Drift Analyzer Full Run');
+// Temporary line to receive arguments from CLI when smoll.py invokes tkyoDrift.js
+// const [,, input, output] = process.argv;
+const input = 'How do you calculate the sum of an integral?';
+const output = 'Blue balloons are floating through space and time.';
+tkyoDrift(input, output);

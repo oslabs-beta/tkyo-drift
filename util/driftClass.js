@@ -1,4 +1,5 @@
 import fs from 'fs';
+import zlib from 'zlib'
 import path from 'path';
 import { pipeline } from '@xenova/transformers';
 import {
@@ -58,7 +59,7 @@ export class DriftModel {
 
     // Load the model using xenova transformer and the model ID
     this.embeddingModel = await pipeline('feature-extraction', this.modelName);
-    MODEL_CACHE[this.modelName] = this.embeddingModel
+    MODEL_CACHE[this.modelName] = this.embeddingModel;
   }
 
   // * Function to make an embedding from an input/output pair
@@ -74,7 +75,7 @@ export class DriftModel {
     });
 
     // Save embedding to the object
-    this.embedding = result.data
+    this.embedding = result.data;
 
     // Save dimensions to object (the actual vector dim is at position 1)
     this.dimensions = result.dims[1];
@@ -87,8 +88,8 @@ export class DriftModel {
 
   // * Function to Save Data to file path
   async saveToBin() {
-    // Check is the model type is training, and abort if true
-    if (this.modelType === 'training') return
+    // Check is the model's baseline is training, and abort if true
+    if (this.baselineType === 'training') return;
 
     // Turn the embedding into a blob and define it's offset/dimensions
     const buffer = Buffer.from(
@@ -97,27 +98,75 @@ export class DriftModel {
       this.dimensions * 4
     );
 
+    // TODO: This is still 10k vectors per 2gbs, and we cant change that with less precision.
+    // ? We can, however, compress and decompress files after write and before read. (tis a speed hit tho)
     // Append the binary blob to the file path
     fs.promises.appendFile(this.filePath, buffer);
   }
 
   // TODO: We should check to see if a library for this exists. Its probably faster
   // * Function to read the contents of the Bins
+  // async readVectorsFromBin() {
+  //   // Load the raw binary blob
+  //   const binContents = await fs.promises.readFile(this.filePath);
+
+  //   // Convert the blob into a Float32 Array
+  //   const floatArray = new Float32Array(
+  //     binContents.buffer,
+  //     binContents.byteOffset,
+  //     binContents.length / 4
+  //   );
+
+  //   // Determine if we have less vectors than the rolling max size
+  //   const totalVectors = Math.floor(floatArray.length / this.dimensions);
+  //   const vectorCount = Math.min(this.maxSize, totalVectors);
+
+  //   // Calculate how many vectors we need to pull out of the float array
+  //   const startIndex =
+  //     this.baselineType === 'training'
+  //       ? 0
+  //       : Math.max(totalVectors - vectorCount - 1, 0);
+
+  //   // Set vector array to an array of arrays equal to the size of vector count
+  //   // TODO: This needs to be a float 32 array
+  //   this.vectorArray = new Array(vectorCount);
+
+  //   // For each dim length, push the numbers into a vector array
+  //   for (let i = 0; i < vectorCount; i++) {
+  //     // Calculate the start and end positions need to pull out of from the float array
+  //     const offset = (startIndex + i) * this.dimensions;
+
+  //     // Assign the vector from the float array to the vector array
+  //     this.vectorArray[i] = floatArray.slice(offset, offset + this.dimensions);
+  //   }
+  // }
+
+  // !fs read file has an upper limit on 2gb files, which is 10k of the big vectors. This version fixes that
   async readVectorsFromBin() {
     // Load the raw binary blob
-    const binContents = await fs.promises.readFile(this.filePath);
+    const stream = fs.createReadStream(this.filePath, {
+      highWaterMark: this.dimensions * 4,
+    });
+
+    const vectorList = [];
 
     // Convert the blob into a Float32 Array
-    const floatArray = new Float32Array(
-      binContents.buffer,
-      binContents.byteOffset,
-      binContents.length / 4
-    );
+    for await (const chunk of stream) {
+      // Guard against partial chunks
+      if (chunk.length !== this.dimensions * 4) continue;
+      
+      const floatArray = new Float32Array(
+        chunk.buffer,
+        chunk.byteOffset,
+        this.dimensions
+      );
+      vectorList.push(floatArray);
+    }
 
     // Determine if we have less vectors than the rolling max size
-    const totalVectors = Math.floor(floatArray.length / this.dimensions);
+    const totalVectors = vectorList.length;
     const vectorCount = Math.min(this.maxSize, totalVectors);
-
+    
     // Calculate how many vectors we need to pull out of the float array
     const startIndex =
       this.baselineType === 'training'
@@ -125,16 +174,15 @@ export class DriftModel {
         : Math.max(totalVectors - vectorCount - 1, 0);
 
     // Set vector array to an array of arrays equal to the size of vector count
-    // TODO: This needs to be a float 32 array
     this.vectorArray = new Array(vectorCount);
 
     // For each dim length, push the numbers into a vector array
     for (let i = 0; i < vectorCount; i++) {
       // Calculate the start and end positions need to pull out of from the float array
-      const offset = (startIndex + i) * this.dimensions;
+      const vector = vectorList[startIndex + i];
 
       // Assign the vector from the float array to the vector array
-      this.vectorArray[i] = floatArray.slice(offset, offset + this.dimensions);
+      this.vectorArray[i] = vector;
     }
   }
 
