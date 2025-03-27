@@ -1,6 +1,5 @@
-import shlex
-from transformers import AutoModelForCausalLM, AutoTokenizer
 import subprocess
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 
 # Load the smollm2 model and tokenizer
@@ -13,35 +12,44 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 model.to(device)
 
 # Define input text
-input_text = "How do you calculate the sum of an integral?"
+input_text = "Blue monkeys are sitting on my head telling me to tap dance, how do I make them stop?"
 inputs = tokenizer(input_text, return_tensors="pt")
-
-# Explicitly set attention mask
-input_ids = inputs["input_ids"].to(device)
-attention_mask = inputs["attention_mask"].to(device)
 
 # Ensure PAD token is set
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-# Generate text with attention mask and pad token
+# Move tensors to device
+input_ids = inputs["input_ids"].to(device)
+attention_mask = inputs["attention_mask"].to(device)
+
+# Generate output
 output = model.generate(
-    input_ids, 
-    attention_mask=attention_mask, 
-    max_length=1000,
-    pad_token_id=tokenizer.pad_token_id  # Explicitly set pad token
+    input_ids,
+    attention_mask=attention_mask,
+    max_length=800,
+    pad_token_id=tokenizer.pad_token_id,
+    eos_token_id=tokenizer.eos_token_id,
+    num_beams=4,
+    early_stopping=True
 )
 
-#! INSERT SIPHONS HERE
-# tkyoDrift(input_text, input)
-# tkyoDrift(output, output)
 
-# Decode and print result
-print(tokenizer.decode(output[0], skip_special_tokens=True))
 
+
+# Decode input and output texts
 decoded_input = input_text
 decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
 
-# Run tkyoDrift.js with CLI args
-cmd = f'node tkyoDrift.js "{decoded_input}" "{decoded_output}"'
-subprocess.run(shlex.split(cmd))
+# Print to confirm visually
+print("\nInput:\n", decoded_input)
+print("\nOutput:\n", decoded_output)
+
+# Call the drift analyzer Node script (assumes it's one directory up)
+try:
+    subprocess.run(
+        ["node", "./tkyoDrift.js", decoded_input, decoded_output],
+        check=True
+    )
+except subprocess.CalledProcessError as e:
+    print("Error running tkyoDrift.js:", e)

@@ -18,13 +18,13 @@
 @@@@@@@@#.=++++.-#%@@@@@@@@@@@@@@@%-@@@@@@@@@@@@@@@*:%-::==***#%@@@@@@@@@@@@@@@@@@@@@@@@@@@@*    +@@@%.    *@@@@#.   %@@@.   .#@@@@@@@@:    #@@@@@@@%.   +@@@@@@@@@@@@@@=    :@@@@@@###%%*.:.:@@@@@@@@@@@@@@@@@@@        
 @@@@%:. ..-+**-....=%%%@@@@@@@@%#:*@@@@@@@@@@@@@+.+-.++==-*##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%.   +@@@@@.   .@@@@@    -@@@#.  :@@@@@@@@@*    =@@@@@@@@.   :@@@@@@#*@@@#.%@:    @@@*++-#@@@@*.:..*@@@@@@@@@@@@@@@@@@        
 @@@+-#@@@@@@@@@@@@+.=:..-+++=:.=.#@@@@@@@@@@@@@@#..#@%@-=*##%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    -@@@@@=   .@@@@@:            -#@@@@@@@%.   -@@@@@@@@-         #@@@@@@=%@-   .#%-#%%*+@@@@@+.:  -@@@@@@@@@@@@@@@@@@        
-%-@@@@@@@@@@@@@@@@@+..+@=.*@@@@@.*%%@@@@%%@@%..*-=*@@#@:**%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@-   .@@@@@+    #@@@@-              =@@@@@@@.   :@@@@@@@@=         +@@@@@@%*@+    +@:.     .=@@@=.:  :@@@@@@@@@@@@@@@@@@        
+%-@@@@@@@@@@@@@@@@@+..+@=.*@@@@@.*%%@@@@%%@@%..*-=*@@#@:**%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@-   .@@@@@+    #@@@@-    -@@@-    =@@@@@@@@.   :@@@@@@@@=    +@@@@@@@@@@@%*@+    +@:.     .=@@@=.:  :@@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@@@@@@@@@*%@@@@@+*@@@@@#=..=*@@@.:**##*:%@@##-+*%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@*    -***+-    #@@@@+    %@@@@@.   =@@@@*++:    :++%@%%@*    *@#**=#%@@@@@@@%.   =@+..      ..:*-.:  :%@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@@@@@@@@%*@@@@@@@*@@@@@@@@:-%%%:.#####+:%@@#=*++#%%%%%*%%@@@@@@@@@@@@@@@@@@@@@*            .-@@@@@%.   #@@@@@.    @@@@.          -@%#@@.   *@#**-%%*-...-@%    :@@:    ..  ....:.:  .%@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@@@@@@@%@@@@@@@@@@@@@@@@@@@%.   -**###-:@@@%**=*==#%%%%%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@@%%%%%@@@@@@@%%%@@@@@@@#=@@@@@@@@@@@@@@*:+@@@@@@@#++=:=++++++*@@@@@@@@*.    .=..  .:..:. .#@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@: .=-.=+%@%%-...-*#-:+++++++++++++====---:::...........................::::--------:::.::.-++++++++++++=.++++++++++++-:+++++++=.=#@@@@*+.    :.-.: ....:=*=#@@@@@@@@@@@@@@@@@        
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%.:=-:..=+%@%%-.-+++++:-++++++++++=:=++++++++++++-.:-:                                  ::.=+++++++++++++:-++++++++++++:-+++++-.=:=%@@@@=-     :.:.: .::.-**=*@@@@@@@@@@@@@@@@@        
-@@@@@@@@@@@=@@@@@@@@@@@@@@@@+..%@@.-=:-   =+#@@%=.-=++++=.=++++++++++:=+++++++++++++=..-:                      .............==++++++=======.-=====--:::::--=*##*-..:=@@@@%=:     .::.:  --.-**-*@@@@@@@@@@@@@@@@@        
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%.:=-:..=+%@%%-.-+++++:-++++++++++=:=++++++++++++-.:-:Authored By:                      ::.=+++++++++++++:-++++++++++++:-+++++-.=:=%@@@@=-     :.:.: .::.-**=*@@@@@@@@@@@@@@@@@        
+@@@@@@@@@@@=@@@@@@@@@@@@@@@@+..%@@.-=:-   =+#@@%=.-=++++=.=++++++++++:=+++++++++++++=..-:Tico, Milti, Anthony, Wing, Monique==++++++=======.-=====--:::::--=*##*-..:=@@@@%=:     .::.:  --.-**-*@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@*-@@@@@@@@@@@@@@@@@@@-=-:=....  =+*@@@+ .:-++++:.==++++++++=.==+++++++++++==...................::--==++*****+++======-----:::::---==+++*****######%%%#%%%%*@@@@%=.     .=:.: ..:::**-#@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@+:@@@@@@@@@@@@@@@@@@@@.:=.......-##@@@*...-**+++**##%%%%%%%%%%%%##**+++=======+++***###%%%%%%@@@@@@@@@@@@@@@@@@@@@%%%%%%%%%%#####***###%%%%@@@@@@@%%%%%%%%#@@@@%:....  .=... :.:-.**-#@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@#.+@@@@@@@@@@@@@@@@@@@.=-.-==....##@@@%**%%%%%%####*******####%%%%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%#%%%%%%%@@@@*..:..  .-... :..- =*=%@@@@@@@@@@@@@@@@@        
@@ -37,19 +37,15 @@
 @@@@@@@@%:+@@@@@@@@@@@@.@@@@@@@@*-+*+*##*-..  ..=@@@@@@*=:=*#%@@@%%##%@@@#==. ..::-===:::::::::::::::::--------::::::::::::::::::::--==-:-%@@%%##%%%@%%@@@@@@@@@@@@@%+....           :..:@@@@@@@@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@%::*@@@@@@@@=.@@@@@@@@:-=*#####*:.....*@@@@@@@@@%####*++*#%@@@-.-++=---::::::..............:::---==+++++++++++*++=-:::-+#%%@@@@@@@@@@@@@@@@@@@@@@@@@@@%#+-.            .:. .#@@@@@@@@@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@@@@@-++=+++=+-.#@@@@@@%.-+=*=+====-...:*%@@@@@@@@@@@@@@@@@@@@@@@%%%##**++====--------=================+++++***##%%@@@@@@@@@@@@@@@%%%%###***++==--::::..             ... ..-***###%%@@@@@@@@@@@@@@@@@@@        
-@@@@@@@@@@@@@@@#-++++=*=-=+.-%@@@@@:.-+===+-.   ..:***#%%%%%%%@@@@@@@@@@@@@@@@@@@%%%%%%%%%%%%%%##**++==--:::....         By:                                                                                                
-@@@@@@@@@@@@@@@@@%+:--::=****=:..::-. ......       ...:::::..........................                                       Tico, Milti, Anthony, Wing, Monique                                                                                    .        
+@@@@@@@@@@@@@@@#-++++=*=-=+.-%@@@@@:.-+===+-.   ..:***#%%%%%%%@@@@@@@@@@@@@@@@@@@%%%%%%%%%%%%%%##**++==--:::....                                                                                                         
+@@@@@@@@@@@@@@@@@%+:--::=****=:..::-. ......       ...:::::..........................                                                                                                                           .        
 @%%%####******+++++++++=============------:::::.............                                                   ...............................::::::::::::::::::::::------=====+++++++*******#######%%%%%%@@@@@@@        
 @@@@@@@@@@@@@@@@@@%%%##############%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@*/
 import fs from 'fs';
 import path from 'path';
 import { v4 } from 'uuid';
-import makeEmbedding from './util/1-makeEmbedding.js';
-import saveEmbeddings from './util/2-saveEmbeddings.js';
-import readVectorsFromBin from './util/3-readBinFiles.js';
-import getBaseline from './util/4-getBaseline.js';
-import getSimilarity from './util/5-getCosSimilarity.js';
-import makeLogEntry from './util/6-makeLogEntry.js';
+import makeLogEntry from './util/makeLogEntry.js';
+import { DriftModel } from './util/driftClass.js';
 
 // * Global Variables for the utilities
 
@@ -62,92 +58,119 @@ export const MODELS = {
 export const PRECISION_VALUE = 6;
 // Upper limit on I/Os to capture for the training data baseline (this is ignored when using the batch call)
 export const TRAINING_MAX_SIZE = Math.max(10000, 0);
-// Upper limit on I/Os to capture for the rolling data baseline (this is never ignored) //TODO: Do we want to delete old records from this or just add new ones (and filter in the log?)
-export const ROLLING_MAX_SIZE = Math.max(1, 0);
-// Location to save data files
-export const OUTPUT_DIR = path.resolve('./data'); // TODO: I don't know if this path.resolve works, this needs to be tested.
+// Upper limit on I/Os to capture for the rolling data baseline (this is never ignored)
+export const ROLLING_MAX_SIZE = Math.max(10, 0);
+// Location to save data files // TODO: This is relative to where the script runs, which will put data in weird places
+export const OUTPUT_DIR = path.resolve('./data');
+// Cache of pipeline output results, to speed up model loading
+export const MODEL_CACHE = {};
 
 export default async function tkyoDrift(input, output) {
-  console.log('User Input: ', input);
-  console.log('AI Output: ', output);
-  // Stopwatch
+  // Stopwatch START 🏎️
   console.time('Drift Analyzer Full Run');
 
-  // ------------- << Get Embeddings >> -------------
-  // Check the data type of the input
-  if (
-    typeof input !== 'string' ||
-    input.trim() === '' ||
-    typeof output !== 'string' ||
-    output.trim() === ''
-  ) {
-    console.error(
-      '↗️ Embedding failed: Data sent to embedding model is not a non-empty string.'
-    );
-    return null;
+  // Make model holder object, io types, and baselines (don't change these)
+  const driftModels = {};
+  const ioTypes = ['input', 'output'];
+  const baselineTypes = ['rolling', 'training'];
+
+  //  ------------- << Construct Model Combinations >> -------------
+  // * For each model, for each ioType, for each baselineType,
+  // make a model and assign to driftModels object
+  for (const [modelType, modelName] of Object.entries(MODELS)) {
+    for (const ioType of ioTypes) {
+      for (const baselineType of baselineTypes) {
+        const key = `${modelType}.${ioType}.${baselineType}`;
+        driftModels[key] = new DriftModel(
+          modelType,
+          modelName,
+          ioType,
+          baselineType
+        );
+      }
+    }
   }
 
-  // * INPUT:
-  // Get embedding from input data
-  const inputEmbedding = await makeEmbedding(input);
+  //  ------------- << Initialize Model File Pathing >> -------------
+  // * For each model, invoke set file path method
+  // ! NOTE: If training data is not supplied, use the training file
+  // Yes, this is intentional, check the ReadMe for why...
+  for (const model of Object.values(driftModels)) {
+    model.setFilePath();
+  }
 
-  // * OUTPUT:
-  // Get embedding from output data
-  const outputEmbedding = await makeEmbedding(output);
+  //  ------------- << Load the Xenova Models >> -------------
+  // * Load all models sequentially
+  // ! NOTE: Loading models sequentially is intentional, as they check the cache before attempting to load
+  for (const model of Object.values(driftModels)) {
+    await model.loadModel();
+  }
+
+  // ------------- << Get Embeddings >> -------------
+  // * Get embeddings for all inputs and outputs in parallel
+  // TODO: We need to check to see if make embedding calls can block other calls. No problems so far in my testing -tico
+  await Promise.all(
+    Object.entries(driftModels).map(([key, model]) => {
+      const isInput = key.includes('.input.');
+      const text = isInput ? input : output;
+      return model.makeEmbedding(text);
+    })
+  );
 
   // ------------- << Save Data >> -------------
+  // * Save the embedding to the rolling/training files in parallel
+  // ! NOTE: Write ops are done to separate files, this is safe
   // Check if directory exists
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
-  // * INPUT:
-  // Append input vector to Rolling Input JSONL
-  saveEmbeddings('input', inputEmbedding);
 
-
-  // * OUTPUT:
-  // Append output vector to Rolling Output JSONL
-  saveEmbeddings('output', outputEmbedding);
+  // For each model, write to disk
+  await Promise.all(
+    Object.values(driftModels).map((model) => model.saveToBin())
+  );
 
   // ------------- << Read Bin Files >> -------------
-  // * INPUT:
-  // Read and assemble Input Vectors from Bin Files
-  const inputFiles = readVectorsFromBin('input', inputEmbedding);
-
-  // * OUTPUT:
-  // Read and assemble Output Vectors from Bin Files
-  const outputFiles = readVectorsFromBin('output', outputEmbedding);
+  // * Read up to N embeddings from binary blobs in parallel
+  // ! NOTE: Read ops are non-locking, this is safe
+  // ? See Training Max Size/Rolling Max Size in ReadMe for more info
+  // For each model, read from disk
+  await Promise.all(
+    Object.values(driftModels).map((model) => model.readVectorsFromBin())
+  );
 
   // ------------- << Get Baseline >> -------------
-  // * INPUT:
-  // Get input baselines from Input Parquet
-  const inputBaselines = getBaseline(inputFiles, input);
-  // * OUTPUT:
-  // Get output baselines from Output Parquet
-  const outputBaselines = getBaseline(outputFiles, output);
-  
-  // ------------- << Get Cosine Similarity >> -------------
-  // * INPUT:
-  // Compare input vector to Input baselines
-  const inputSimilarity = getSimilarity(inputEmbedding, inputBaselines);
+  // * Calculate Baseline values for each model in serial
+  // ! NOTE: You can make this async, but it doesn't do anything
+  // For each model, calculate the baseline
+  for (const model of Object.values(driftModels)) {
+    model.getBaseline();
+  }
 
-  // * OUTPUT:
-  // Compare output vector to Output baselines
-  const outputSimilarity = getSimilarity(outputEmbedding, outputBaselines);
+  // ------------- << Get Cosine Similarity >> -------------
+  // * Calculate Cosine Similarity between input and baseline in serial
+  // ! NOTE: You can make this async, but it doesn't do anything
+  const similarityResults = Object.fromEntries(
+    Object.entries(driftModels).map(([key, model]) => [
+      key,
+      model.getCosineSimilarity(),
+    ])
+  );
 
   // ------------- << Make & Append Log Entries >> -------------
-    // Make shared ID and date for I/O Pair
-    const sharedID = v4();
+  // * Push the results to the log
+  // Make shared ID and date for I/O Pair
+  const sharedID = v4();
+  makeLogEntry(sharedID, similarityResults);
 
-  // * INPUT & OUTPUT:
-  // Append input results to Log
-  makeLogEntry(sharedID, inputSimilarity, outputSimilarity);
-
-  // End Stopwatch (Comment this out in production)
+  // Stopwatch END 🏁 (Comment this out in production)
   console.timeEnd('Drift Analyzer Full Run');
+  console.log(similarityResults);
 }
 //Temporary line to receive arguments from CLI when smoll.py invokes tkyoDrift.js
-// const [,, input, output] = process.argv;
-const input = 'How do you calculate the sum of an integral?'
-const output = 'Blue balloons are floating through space and time.'
-tkyoDrift(input, output);
+const [,, input, output] = process.argv;
+// const input = 'How do you calculate the sum of an integral?';
+// const output = 'Blue balloons are floating through space and time.';
+console.time('External Drift Analyzer Full Run');
+await tkyoDrift(input, output);
+console.timeEnd('External Drift Analyzer Full Run');
