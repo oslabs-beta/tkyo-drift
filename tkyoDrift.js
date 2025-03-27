@@ -45,7 +45,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 } from 'uuid';
 import makeLogEntry from './util/makeLogEntry.js';
-import { DriftModel } from './util/driftClass.js';
+import { DriftModel } from './util/DriftModel.js';
 
 // * Global Variables for the utilities
 
@@ -58,7 +58,8 @@ export const MODELS = {
 export const TRAINING_MAX_SIZE = Math.max(10000, 0);
 // Upper limit on I/Os to capture for the rolling data baseline (this is never ignored)
 export const ROLLING_MAX_SIZE = Math.max(10, 0);
-// Location to save data files // TODO: This is relative to where the script runs, which will put data in weird places
+// Location to save data files 
+// TODO: This is relative to where the script runs, which will put data in weird places
 export const OUTPUT_DIR = path.resolve('./data');
 // Cache of pipeline output results, to speed up model loading
 export const MODEL_CACHE = {};
@@ -88,7 +89,7 @@ export default async function tkyoDrift(input, output) {
       }
     }
   }
-
+  
   //  ------------- << Initialize Model File Pathing >> -------------
   // * For each model, invoke set file path method
   // ! NOTE: If training data is not supplied, it will use the rolling file's path
@@ -96,14 +97,14 @@ export default async function tkyoDrift(input, output) {
   for (const model of Object.values(driftModels)) {
     model.setFilePath();
   }
-
+  
   //  ------------- << Load the Xenova Models >> -------------
   // * Load all models sequentially
   // ! NOTE: Loading models sequentially is intentional, as they check the cache before attempting to load
   for (const model of Object.values(driftModels)) {
     await model.loadModel();
   }
-
+  
   // ------------- << Get Embeddings >> -------------
   // * Get embeddings for all inputs and outputs in parallel
   // TODO: We need to check to see if make embedding calls can block other calls. No problems so far in my testing -tico
@@ -114,7 +115,7 @@ export default async function tkyoDrift(input, output) {
       return model.makeEmbedding(text);
     })
   );
-
+  
   // ------------- << Save Data >> -------------
   // * Save the embedding to the rolling/training files in parallel
   // ! NOTE: Write ops are done to separate files, this is safe
@@ -122,12 +123,12 @@ export default async function tkyoDrift(input, output) {
   if (!fs.existsSync(OUTPUT_DIR)) {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
-
+  
   // For each model, write to disk
   await Promise.all(
     Object.values(driftModels).map((model) => model.saveToBin())
   );
-
+  
   // ------------- << Read Bin Files >> -------------
   // * Read up to N embeddings from binary blobs in parallel
   // ! NOTE: Read ops are non-locking, this is safe
@@ -136,7 +137,7 @@ export default async function tkyoDrift(input, output) {
   await Promise.all(
     Object.values(driftModels).map((model) => model.readVectorsFromBin())
   );
-
+  
   // ------------- << Get Baseline >> -------------
   // * Calculate Baseline values for each model in serial
   // ! NOTE: You can make this async, but it doesn't do anything
@@ -144,7 +145,7 @@ export default async function tkyoDrift(input, output) {
   for (const model of Object.values(driftModels)) {
     model.getBaseline();
   }
-
+  
   // ------------- << Get Cosine Similarity >> -------------
   // * Calculate Cosine Similarity between input and baseline in serial
   // ! NOTE: You can make this async, but it doesn't do anything
@@ -165,8 +166,7 @@ export default async function tkyoDrift(input, output) {
   console.timeEnd('Drift Analyzer Full Run');
   console.log(similarityResults);
 }
-// Temporary line to receive arguments from CLI when smoll.py invokes tkyoDrift.js
-// const [,, input, output] = process.argv;
+
 const input = 'How do you calculate the sum of an integral?';
 const output = 'Blue balloons are floating through space and time.';
 tkyoDrift(input, output);
