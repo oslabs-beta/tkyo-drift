@@ -137,3 +137,5 @@ dist
 
 # AI testing Model
 aiModel/*
+
+.DS_Store
