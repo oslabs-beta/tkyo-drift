@@ -105,3 +105,14 @@ export default async function tkyoDriftSetTrainings(dataArray) {
 //     }
 //   }
 }
+
+
+// Adjust this path to be relative to where you're running the script
+const datasetPath = path.resolve('../aiModel/dataset.json');
+
+// Read and parse the dataset
+const rawData = fs.readFileSync(datasetPath, 'utf-8');
+const dataArray = JSON.parse(rawData);
+
+// Run training ingestion
+tkyoDriftSetTrainings(dataArray);
