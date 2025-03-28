@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import * as float16 from '@petamoriken/float16';
 import { pipeline } from '@xenova/transformers';
 import {
   OUTPUT_DIR,
@@ -9,11 +10,12 @@ import {
 } from '../tkyoDrift.js';
 
 export class DriftModel {
-  constructor(modelType, modelName, ioType, baselineType) {
+  constructor(modelType, modelName, ioType, baselineType, depth = 0) {
     this.baselineType = baselineType;
     this.modelType = modelType;
     this.modelName = modelName;
     this.ioType = ioType;
+    this.depth = depth;
     this.maxSize =
       baselineType === 'rolling' ? ROLLING_MAX_SIZE : TRAINING_MAX_SIZE;
     this.filePath = null;
@@ -69,8 +71,7 @@ export class DriftModel {
     // Get the embedding for the input, save to object
     const result = await this.embeddingModel(text, {
       pooling: 'mean',
-      // TODO: With normalize set to true, we will never get results below 0
-      normalize: !this.baselineType === 'concept',
+      normalize: this.baselineType !== 'concept',
     });
 
     // Save embedding to the object
@@ -87,20 +88,12 @@ export class DriftModel {
 
   // * Function to Save Data to file path
   async saveToBin() {
-    // Check is the model's baseline is training, and abort if true
+    // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
-    // Turn the embedding into a blob and define it's offset/dimensions
-    const buffer = Buffer.from(
-      this.embedding.buffer,
-      this.byteOffset,
-      this.dimensions * 4
-    );
-
-    // TODO: This is still 10k vectors per 2gbs, and we cant change that with less precision.
-    // ? We can, however, compress and decompress files after write and before read. (tis a speed hit tho)
-    // Append the binary blob to the file path
-    fs.promises.appendFile(this.filePath, buffer);
+    // Convert the Float32Array to a buffer and append it to file
+    const buffer = Buffer.from(this.embedding.buffer);
+    await fs.promises.appendFile(this.filePath, buffer);
   }
 
   // * Function to read the contents of the Bins
@@ -117,12 +110,13 @@ export class DriftModel {
       // Guard against partial chunks
       if (chunk.length !== this.dimensions * 4) continue;
 
-      const floatArray = new Float32Array(
+      // convert binary blob to float32
+      const float32Array = new Float32Array(
         chunk.buffer,
         chunk.byteOffset,
         this.dimensions
       );
-      vectorList.push(floatArray);
+      vectorList.push(float32Array);
     }
 
     // Determine if we have less vectors than the rolling max size
@@ -182,7 +176,7 @@ export class DriftModel {
       this.baselineArray.reduce((sum, b) => sum + b * b, 0)
     );
 
-    // return the cosine similarity between A and B
-    return dotProduct / (magnitudeA * magnitudeB);
+    // return the cosine similarity between A and B, clamping the results to prevent rounding errors
+    return Math.min(1, dotProduct / (magnitudeA * magnitudeB));
   }
 }

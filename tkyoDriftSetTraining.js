@@ -42,6 +42,7 @@ export default async function tkyoDriftSetTrainings(dataArray) {
 
       for (const [index, text] of chunk.entries()) {
         const absoluteIndex = i + index;
+        
         for (const [driftType, model] of Object.entries(models)) {
           const result = await model(text, {
             pooling: 'mean',

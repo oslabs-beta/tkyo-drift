@@ -3,7 +3,7 @@ import path from 'path';
 import tkyoDriftSetTrainings from '../tkyoDriftSetTraining.js';
 
 // Adjust this path to be relative to where you're running the script
-const datasetPath = path.resolve('./aiModel/smollthoughts_data/dataset.json');
+const datasetPath = path.resolve('../aiModel/dataset.json');
 
 // Read and parse the dataset
 const rawData = fs.readFileSync(datasetPath, 'utf-8');
