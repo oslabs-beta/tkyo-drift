@@ -29,7 +29,7 @@ export default async function tkyoDriftSetTrainings(dataArray) {
     for (const ioType of ['input', 'output']) {
       const filePath = path.join(
         OUTPUT_DIR,
-        `${driftType}_${ioType}.training.bin`
+        `${driftType}.${ioType}.training.bin`
       );
 
       if (fs.existsSync(filePath)) {
@@ -42,39 +42,48 @@ export default async function tkyoDriftSetTrainings(dataArray) {
   // ------------- << Helper: Embed & Write Vectors >> -------------
   // * Run batching to reduce memory usage and avoid timeouts
   const embedAndSave = async (ioType, texts, chunkSize = 100) => {
-    for (let i = 0; i < texts.length; i += chunkSize) {
-      const chunk = texts.slice(i, i + chunkSize);
+    // For each model, embed and write the entire set of vectors
+    for (const [driftType, model] of Object.entries(models)) {
+      // Construct the destination path and open a write stream
+      const trainingPath = path.join(
+        OUTPUT_DIR,
+        `${driftType}.${ioType}.training.bin`
+      );
+      const writeStream = fs.createWriteStream(trainingPath, { flags: 'a' });
 
-      // For each model, embed and write the whole chunk
-      for (const [driftType, model] of Object.entries(models)) {
-        const trainingPath = path.join(
-          OUTPUT_DIR,
-          `${driftType}_${ioType}.training.bin`
-        );
+      let totalWritten = 0;
 
-        // iterate over each input/output text
+      // Chunks the dataset into smaller groups (100 at a time)
+      for (let i = 0; i < texts.length; i += chunkSize) {
+        const chunk = texts.slice(i, i + chunkSize);
+
+        // Convert each text into an embedding buffer
         for (const text of chunk) {
           const result = await model(text, {
             pooling: 'mean',
             normalize: true,
           });
 
-          // Make a float 16 array out of the input data
+          // Make a float 16 buffer from the input data
           const buffer = new ArrayBuffer(result.data.length * 2);
           const view = new DataView(buffer);
           for (let i = 0; i < result.data.length; i++) {
             setFloat16(view, i * 2, result.data[i]);
           }
 
-          // Write to disk
-          fs.appendFileSync(trainingPath, Buffer.from(buffer));
+          // Write the binary buffer to the file stream
+          writeStream.write(Buffer.from(buffer));
+          totalWritten++;
         }
 
         // Log progress
         console.log(
-          `📦 Wrote ${chunk.length} ${driftType} ${ioType} embeddings to ${trainingPath}`
+          `📦 [${totalWritten}/${texts.length}] ${driftType} ${ioType}`
         );
       }
+
+      // Close the write stream after processing all vectors
+      writeStream.end();
     }
   };
 
@@ -85,14 +94,14 @@ export default async function tkyoDriftSetTrainings(dataArray) {
 
   // ------------- << Create Lock Files >> -------------
   // * Write lock sidecars to signal completed baseline setup
-  for (const driftType of Object.keys(models)) {
-    for (const ioType of ['input', 'output']) {
-      const lockFile = path.join(
-        OUTPUT_DIR,
-        `${driftType}_${ioType}.training.lock`
-      );
-      fs.writeFileSync(lockFile, '');
-      console.log(`🔐 Lock file created: ${lockFile}`);
-    }
-  }
+//   for (const driftType of Object.keys(models)) {
+//     for (const ioType of ['input', 'output']) {
+//       const lockFile = path.join(
+//         OUTPUT_DIR,
+//         `${driftType}.${ioType}.training.lock`
+//       );
+//       fs.writeFileSync(lockFile, '');
+//       console.log(`🔐 Lock file created: ${lockFile}`);
+//     }
+//   }
 }
