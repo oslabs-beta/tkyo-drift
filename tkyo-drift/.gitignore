@@ -137,24 +137,6 @@ dist
 
 # AI testing Model
 aiModel/*
-data/concept_input.training.bin 
-data/concept_input.training.lock 
-data/concept_output.training.bin 
-data/concept_output.training.lock 
-data/concept.input.rolling.bin 
-data/concept.output.rolling.bin 
-data/drift_log.csv 
-data/semantic_input.training.bin 
-data/semantic_input.training.lock 
-data/semantic_output.training.bin 
-data/semantic_output.training.lock 
-data/semantic.input.rolling.bin 
-data/semantic.output.rolling.bin
-data/lexical_input.training.bin 
-data/lexical_input.training.lock 
-data/lexical_output.training.bin 
-data/lexical_output.training.lock 
-data/lexical.input.rolling.bin 
-data/lexical.output.rolling.bin
 
 .DS_Store
+aiModel/
