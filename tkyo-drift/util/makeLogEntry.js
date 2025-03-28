@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { OUTPUT_DIR } from '../tkyoDrift.js';
 
-export default function makeLogEntry(id, similarityObject) {
+export default function makeLogEntry(id, similarityObject, depth) {
   // Construct the destination to the log in the data folder
   const logPath = path.join(OUTPUT_DIR, 'drift_log.csv');
 
@@ -32,7 +32,7 @@ export default function makeLogEntry(id, similarityObject) {
   // or dynamically detect if needed
   const baselineTypes = ['rolling', 'training']; 
 
-  const headerCols = ['ID', 'TIMESTAMP', 'I/O TYPE'];
+  const headerCols = ['ID', 'DEPTH', 'TIMESTAMP', 'I/O TYPE'];
   for (const model of modelTypes) {
     for (const baseline of baselineTypes) {
       headerCols.push(`${model.toUpperCase()} ${baseline.toUpperCase()} COS`);
@@ -42,7 +42,7 @@ export default function makeLogEntry(id, similarityObject) {
 
   // Helper function to build CSV rows for input/output
   function buildRow(ioType){
-    const row = [id, timestamp, ioType];
+    const row = [id, depth, timestamp, ioType];
     for (const model of modelTypes) {
       for (const baseline of baselineTypes) {
         const val = grouped[ioType]?.[model]?.[baseline] ?? '';

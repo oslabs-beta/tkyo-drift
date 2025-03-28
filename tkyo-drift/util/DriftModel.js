@@ -7,13 +7,15 @@ import {
   TRAINING_MAX_SIZE,
   MODEL_CACHE,
 } from '../tkyoDrift.js';
+import { setFloat16, getFloat16 } from '@petamoriken/float16';
 
 export class DriftModel {
-  constructor(modelType, modelName, ioType, baselineType) {
+  constructor(modelType, modelName, ioType, baselineType, depth = 0) {
     this.baselineType = baselineType;
     this.modelType = modelType;
     this.modelName = modelName;
     this.ioType = ioType;
+    this.depth = depth;
     this.maxSize =
       baselineType === 'rolling' ? ROLLING_MAX_SIZE : TRAINING_MAX_SIZE;
     this.filePath = null;
@@ -69,8 +71,7 @@ export class DriftModel {
     // Get the embedding for the input, save to object
     const result = await this.embeddingModel(text, {
       pooling: 'mean',
-      // TODO: With normalize set to true, we will never get results below 0
-      normalize: !this.baselineType === 'concept',
+      normalize: this.baselineType !== 'concept',
     });
 
     // Save embedding to the object
@@ -87,49 +88,53 @@ export class DriftModel {
 
   // * Function to Save Data to file path
   async saveToBin() {
-    // Check is the model's baseline is training, and abort if true
+    // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
-    // Turn the embedding into a blob and define it's offset/dimensions
-    const buffer = Buffer.from(
-      this.embedding.buffer,
-      this.byteOffset,
-      this.dimensions * 4
-    );
+    // Allocate a raw 2-byte buffer per float value
+    const buffer = new ArrayBuffer(this.embedding.length * 2);
+    const view = new DataView(buffer);
 
-    // TODO: This is still 10k vectors per 2gbs, and we cant change that with less precision.
-    // ? We can, however, compress and decompress files after write and before read. (tis a speed hit tho)
-    // Append the binary blob to the file path
-    fs.promises.appendFile(this.filePath, buffer);
+    // Use setFloat16 to write each value into the DataView
+    for (let i = 0; i < this.embedding.length; i++) {
+      setFloat16(view, i * 2, this.embedding[i]);
+    }
+
+    // Convert to Node buffer and write to disk
+    await fs.promises.appendFile(this.filePath, Buffer.from(buffer));
   }
 
   // * Function to read the contents of the Bins
-  async readVectorsFromBin() {
-    // Load the raw binary blob
+  async readFromBin() {
+    // Load the raw binary blob (2 bytes per value, saved as float16)
     const stream = fs.createReadStream(this.filePath, {
-      highWaterMark: this.dimensions * 4,
+      highWaterMark: this.dimensions * 2,
     });
 
+    // Make a placeholder storage array
     const vectorList = [];
 
-    // Convert the blob into a Float32 Array
+    // Iterate through each chunk from the data stream
     for await (const chunk of stream) {
       // Guard against partial chunks
-      if (chunk.length !== this.dimensions * 4) continue;
+      if (chunk.length !== this.dimensions * 2) continue;
 
-      const floatArray = new Float32Array(
-        chunk.buffer,
-        chunk.byteOffset,
-        this.dimensions
-      );
-      vectorList.push(floatArray);
+      // Convert each float16 value to float32 using DataView
+      const view = new DataView(chunk.buffer, chunk.byteOffset, chunk.length);
+      const float32Array = new Float32Array(this.dimensions);
+      for (let i = 0; i < this.dimensions; i++) {
+        float32Array[i] = getFloat16(view, i * 2);
+      }
+
+      // Push to the storage array
+      vectorList.push(float32Array);
     }
 
     // Determine if we have less vectors than the rolling max size
     const totalVectors = vectorList.length;
     const vectorCount = Math.min(this.maxSize, totalVectors);
 
-    // Calculate how many vectors we need to pull out of the float array
+    // Calculate the start index based on rolling or training window
     const startIndex =
       this.baselineType === 'training'
         ? 0
@@ -138,7 +143,7 @@ export class DriftModel {
     // Set vector array to an array of arrays equal to the size of vector count
     this.vectorArray = new Array(vectorCount);
 
-    // For each dim length, push the numbers into a vector array
+    // Populate the final vector array with the most recent N vectors
     for (let i = 0; i < vectorCount; i++) {
       // Calculate the start and end positions need to pull out of from the float array
       const vector = vectorList[startIndex + i];
@@ -182,7 +187,7 @@ export class DriftModel {
       this.baselineArray.reduce((sum, b) => sum + b * b, 0)
     );
 
-    // return the cosine similarity between A and B
-    return dotProduct / (magnitudeA * magnitudeB);
+    // return the cosine similarity between A and B, clamping the results to prevent rounding errors
+    return Math.min(1, dotProduct / (magnitudeA * magnitudeB));
   }
 }

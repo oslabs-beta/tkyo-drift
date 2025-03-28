@@ -139,5 +139,7 @@ dist
 aiModel/*
 
 .DS_Store
+aiModel/
+
 
 node_modules/
