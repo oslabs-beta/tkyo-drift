@@ -136,7 +136,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
   // ? See Training Max Size/Rolling Max Size in ReadMe for more info
   // For each model, read from disk
   await Promise.all(
-    Object.values(driftModels).map((model) => model.readVectorsFromBin())
+    Object.values(driftModels).map((model) => model.readFromBin())
   );
   
   // ------------- << Get Baseline >> -------------
@@ -173,4 +173,4 @@ const input = process.argv[2];
 const output = process.argv[3];
 // console.log('Input:', input);
 // console.log('Output:', output);
-// tkyoDrift(input, output);
+tkyoDrift(input, output);
