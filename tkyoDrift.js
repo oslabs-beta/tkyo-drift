@@ -51,8 +51,8 @@ import { DriftModel } from './util/DriftModel.js';
 //  Models to embed the I/O Data
 export const MODELS = {
   semantic: 'Xenova/all-MiniLM-L12-v2', // Measures change in communication method
-  concept: 'Xenova/e5-base',  // Measures change in communication intent
-  // lexical: 'Xenova/average_word_embeddings_glove.6B.300d', // Measures change in syntax
+  concept: 'Xenova/e5-base',            // Measures change in communication intent
+  lexical: 'Xenova/all-MiniLM-L6-v2',   // Measures change in syntax
 };
 // Upper limit on I/Os to capture for the training data baseline (this is ignored when using the batch call)
 export const TRAINING_MAX_SIZE = Math.max(10000, 0);
@@ -167,6 +167,10 @@ export default async function tkyoDrift(input, output, depth = 0) {
   console.timeEnd('Drift Analyzer Full Run');
 }
 
-const input = 'Purple baloons baba peel mexican tufts of dried sphagetti';
-const output = 'I am sorry, but I do know know how to respond to this request.';
-tkyoDrift(input, output);
+// const input = 'Purple balloons baba peel mexican tufts of dried spaghetti';
+// const output = 'I am sorry, but I do know know how to respond to this request.';
+const input = process.argv[2];
+const output = process.argv[3];
+// console.log('Input:', input);
+// console.log('Output:', output);
+// tkyoDrift(input, output);

@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import * as float16 from '@petamoriken/float16';
 import { pipeline } from '@xenova/transformers';
 import {
   OUTPUT_DIR,
