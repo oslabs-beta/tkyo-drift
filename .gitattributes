@@ -1,0 +1,2 @@
+tkyo-drift/data/concept.input.training.bin filter=lfs diff=lfs merge=lfs -text
+tkyo-drift/data/concept.output.training.bin filter=lfs diff=lfs merge=lfs -text
