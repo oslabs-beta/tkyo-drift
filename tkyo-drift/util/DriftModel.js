@@ -16,7 +16,7 @@ export class DriftModel {
     this.modelName = modelName;
     this.ioType = ioType;
     this.depth = depth;
-    this.maxSize =
+    this.maxSize = // TODO: What happens when somone loads 50k training files, are we still limiting the max size to N?
       baselineType === 'rolling' ? ROLLING_MAX_SIZE : TRAINING_MAX_SIZE;
     this.filePath = null;
     this.embedding = null;
@@ -36,15 +36,15 @@ export class DriftModel {
     );
 
     // Check to see if a file exists at that path, if yes, use it
-    if (fs.existsSync(filepath)) {
-      this.filePath = filepath;
-    } else {
+    // if (fs.existsSync(filepath)) {
+    //   this.filePath = filepath;
+    // } else {
       // If not, set it to use the rolling path instead
       this.filePath = path.join(
         OUTPUT_DIR,
         `${this.modelType}.${this.ioType}.rolling.bin`
       );
-    }
+    // }
   }
 
   // * Function to load the embedding model
@@ -189,5 +189,10 @@ export class DriftModel {
 
     // return the cosine similarity between A and B, clamping the results to prevent rounding errors
     return Math.min(1, dotProduct / (magnitudeA * magnitudeB));
+  }
+
+  getEuclideanDistance() {
+    // Calculate the distance between the embedding and baselineArray
+    return Math.sqrt(this.embedding.reduce((sum, a, i) => sum + (a - this.baselineArray[i]) ** 2, 0));
   }
 }
