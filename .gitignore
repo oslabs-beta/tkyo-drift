@@ -138,3 +138,6 @@ dist
 # AI testing Model
 aiModel/*
 .DS_Store
+smallTraining.parquet
+tkyo-drift/data/concept.input.training.bin
+.gitignore
