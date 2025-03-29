@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { pipeline } from '@xenova/transformers';
-import { setFloat16 } from '@petamoriken/float16';
 import { MODELS, OUTPUT_DIR } from './tkyoDrift.js';
 
 export default async function tkyoDriftSetTrainings(dataArray) {
@@ -64,15 +63,12 @@ export default async function tkyoDriftSetTrainings(dataArray) {
             normalize: true,
           });
 
-          // Make a float 16 buffer from the input data
-          const buffer = new ArrayBuffer(result.data.length * 2);
-          const view = new DataView(buffer);
-          for (let i = 0; i < result.data.length; i++) {
-            setFloat16(view, i * 2, result.data[i]);
-          }
+          // Create a Float32Array from the embedding data
+          const float32Array = new Float32Array(result.data);
 
-          // Write the binary buffer to the file stream
-          writeStream.write(Buffer.from(buffer));
+          // Write the buffer directly to the file stream
+          writeStream.write(Buffer.from(float32Array.buffer));
+
           totalWritten++;
         }
 
@@ -94,18 +90,17 @@ export default async function tkyoDriftSetTrainings(dataArray) {
 
   // ------------- << Create Lock Files >> -------------
   // * Write lock sidecars to signal completed baseline setup
-//   for (const driftType of Object.keys(models)) {
-//     for (const ioType of ['input', 'output']) {
-//       const lockFile = path.join(
-//         OUTPUT_DIR,
-//         `${driftType}.${ioType}.training.lock`
-//       );
-//       fs.writeFileSync(lockFile, '');
-//       console.log(`🔐 Lock file created: ${lockFile}`);
-//     }
-//   }
+  //   for (const driftType of Object.keys(models)) {
+  //     for (const ioType of ['input', 'output']) {
+  //       const lockFile = path.join(
+  //         OUTPUT_DIR,
+  //         `${driftType}.${ioType}.training.lock`
+  //       );
+  //       fs.writeFileSync(lockFile, '');
+  //       console.log(`🔐 Lock file created: ${lockFile}`);
+  //     }
+  //   }
 }
-
 
 // Adjust this path to be relative to where you're running the script
 const datasetPath = path.resolve('../aiModel/dataset.json');
