@@ -91,9 +91,9 @@ const testK5 = 1000
     // console.log("Inertias:", inertias);
 };
 
-console.time('kmeans')
-await kMeans();
-console.timeEnd('kmeans')
+// console.time('kmeans')
+// await kMeans();
+// console.timeEnd('kmeans')
 
 
 // inertia
