@@ -7,7 +7,6 @@ import {
   TRAINING_MAX_SIZE,
   MODEL_CACHE,
 } from '../tkyoDrift.js';
-import { setFloat16, getFloat16 } from '@petamoriken/float16';
 
 export class DriftModel {
   constructor(modelType, modelName, ioType, baselineType, depth = 0) {
@@ -16,7 +15,7 @@ export class DriftModel {
     this.modelName = modelName;
     this.ioType = ioType;
     this.depth = depth;
-    this.maxSize = // TODO: What happens when somone loads 50k training files, are we still limiting the max size to N?
+    this.maxSize = // TODO: What happens when someone loads 50k training files, are we still limiting the max size to N?
       baselineType === 'rolling' ? ROLLING_MAX_SIZE : TRAINING_MAX_SIZE;
     this.filePath = null;
     this.embedding = null;
@@ -39,11 +38,11 @@ export class DriftModel {
     // if (fs.existsSync(filepath)) {
     //   this.filePath = filepath;
     // } else {
-      // If not, set it to use the rolling path instead
-      this.filePath = path.join(
-        OUTPUT_DIR,
-        `${this.modelType}.${this.ioType}.rolling.bin`
-      );
+    // If not, set it to use the rolling path instead
+    this.filePath = path.join(
+      OUTPUT_DIR,
+      `${this.modelType}.${this.ioType}.rolling.bin`
+    );
     // }
   }
 
@@ -91,24 +90,19 @@ export class DriftModel {
     // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
-    // Allocate a raw 2-byte buffer per float value
-    const buffer = new ArrayBuffer(this.embedding.length * 2);
-    const view = new DataView(buffer);
-
-    // Use setFloat16 to write each value into the DataView
-    for (let i = 0; i < this.embedding.length; i++) {
-      setFloat16(view, i * 2, this.embedding[i]);
-    }
+    // Create a Float32Array from the embedding
+    const float32Array = new Float32Array(this.embedding);
 
     // Convert to Node buffer and write to disk
-    await fs.promises.appendFile(this.filePath, Buffer.from(buffer));
+    const buffer = Buffer.from(float32Array.buffer);
+    await fs.promises.appendFile(this.filePath, buffer);
   }
 
   // * Function to read the contents of the Bins
   async readFromBin() {
-    // Load the raw binary blob (2 bytes per value, saved as float16)
+    // Load the raw binary blob (4 bytes per value, saved as float32)
     const stream = fs.createReadStream(this.filePath, {
-      highWaterMark: this.dimensions * 2,
+      highWaterMark: this.dimensions * 4,
     });
 
     // Make a placeholder storage array
@@ -117,14 +111,14 @@ export class DriftModel {
     // Iterate through each chunk from the data stream
     for await (const chunk of stream) {
       // Guard against partial chunks
-      if (chunk.length !== this.dimensions * 2) continue;
+      if (chunk.length !== this.dimensions * 4) continue;
 
-      // Convert each float16 value to float32 using DataView
-      const view = new DataView(chunk.buffer, chunk.byteOffset, chunk.length);
-      const float32Array = new Float32Array(this.dimensions);
-      for (let i = 0; i < this.dimensions; i++) {
-        float32Array[i] = getFloat16(view, i * 2);
-      }
+      // Interpret the chunk directly as Float32Array
+      const float32Array = new Float32Array(
+        chunk.buffer,
+        chunk.byteOffset,
+        this.dimensions
+      );
 
       // Push to the storage array
       vectorList.push(float32Array);
@@ -193,6 +187,11 @@ export class DriftModel {
 
   getEuclideanDistance() {
     // Calculate the distance between the embedding and baselineArray
-    return Math.sqrt(this.embedding.reduce((sum, a, i) => sum + (a - this.baselineArray[i]) ** 2, 0));
+    return Math.sqrt(
+      this.embedding.reduce(
+        (sum, a, i) => sum + (a - this.baselineArray[i]) ** 2,
+        0
+      )
+    );
   }
 }
