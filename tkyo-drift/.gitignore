@@ -143,3 +143,4 @@ aiModel/
 
 
 node_modules/
+data/small_thoughts-train.arrow
