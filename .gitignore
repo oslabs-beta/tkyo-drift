@@ -141,3 +141,5 @@ aiModel/*
 smallTraining.parquet
 tkyo-drift/data/concept.input.training.bin
 .gitignore
+tkyo-drift/data/small_thoughts-train.arrow
+tkyo-drift/data/small_thoughts-test.arrow
