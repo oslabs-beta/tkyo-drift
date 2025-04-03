@@ -1,23 +1,19 @@
 # Numerical operations package
 import numpy as np
-
 # HNSW nearest neighbor search package
 import hnswlib
-
 # Allows the use of time functions
 import time
-
 # Allows the use of file system operations
 import os
-
 # Allows the use of math functions
 import math
-
 # JSON serialization/deserialization
 import json
-
 # command-line argument handling
 import sys
+
+# TODO Check if we need to use HNSW for rolling data, if so modify code
 
 def HNSW(io_type, model_type, query):
 
@@ -45,7 +41,7 @@ def HNSW(io_type, model_type, query):
             if len(data) != num_vectors * dims:
                 raise ValueError("Data is incorrect - size mismatch")
 
-            # Returns the vectors from the binrary file
+            # Returns the vectors from the binary file
             return data.reshape(num_vectors, dims), num_vectors, dims
 
     # Define file paths
@@ -71,6 +67,7 @@ def HNSW(io_type, model_type, query):
     # 'l2' = Euclidean distance
     index = hnswlib.Index(space="l2", dim=dims)
 
+    # TODO Research ef_construction
     # Build the index
     # ef_construction : Controls build speed/accuracy trade-off
     # M:  Number of bidirectional links per node
@@ -85,15 +82,15 @@ def HNSW(io_type, model_type, query):
     # Ends timing for the entire function
     endTotal = time.perf_counter()
 
-    new_array = trainingData[labels[0]]
-    # print(new_array)
+    centroids = trainingData[labels[0]]
 
     return {
-        "labels": new_array.tolist(),
+        "centroids": centroids.tolist(),
         "distances": distances[0].tolist(),
     }
 
-# This is for testing purposes only, delete
+# TODO Remove hardcoded testing stuff
+# # This is for testing purposes only, delete
 # io_type = 'input'
 # model_type = 'lexical'
 # query = np.random.rand(1, 384).astype(np.float32)

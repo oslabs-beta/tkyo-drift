@@ -13,6 +13,7 @@ def kMeansClustering(embeddings):
     # Starts the total function timer
     startTotal = time.perf_counter()
 
+    # TODO Check if we need these error handling
     # Replace NaNs with zero
     embeddings = np.nan_to_num(embeddings)
     # Prevent extreme values
@@ -23,13 +24,14 @@ def kMeansClustering(embeddings):
     # Sets dims to the length of the first vector in the array
     dims = len(embeddings[0])
 
+    # TODO Add section to readme about this
     # Determines the amount of clusters
     num_of_clusters = int(np.sqrt(num_vectors / 2))
 
     # Initialize the KMeans clustering algorithm with specific parameters:
     # random_state: Seed for random number generator to ensure reproducibility
     # (Using the same random_state will produce identical results across runs)
-    kmeans = KMeans(num_of_clusters, random_state=72)
+    kmeans = KMeans(num_of_clusters, random_state=42069)
 
     # Train the K-means model on our data
     # This is where the actual clustering algorithm runs:
@@ -42,12 +44,13 @@ def kMeansClustering(embeddings):
     # assigns the resulting array of centroids to centroids variable
     centroids = kmeans.cluster_centers_
 
+    # TODO Remove prints before going live
     # This is printing the centroids to the console
     # The f is just for formatting
     print(f"Centroids:", centroids)
 
     # Print the shape of the centroids array to verify it matches expectations
-    # Shape will be (n_clusters, n_features)
+    # Shape will be (n_clusters, dims)
     print(f"Centroids shape: {centroids.shape}")
 
     # Ends timing for the entire function
