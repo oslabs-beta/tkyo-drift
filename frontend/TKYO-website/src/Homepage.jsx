@@ -9,18 +9,19 @@ export default function HomePage() {
   return (
       <main className="min-h-screen bg-black text-white font-Audiowide tracking-wider">
         <section
-          className="relative bg-cover bg-center bg-no-repeat h-[370px] flex flex-col justify center"
+          className="relative h-[500px] bg-center bg-cover bg-no-repeat flex items-center justify-center"
+
           style={{ 
             backgroundImage: "url('/TKYObg.png')",
             backgroundSize: "cover",
             backgroundPosition: "center",
-            backgroundRepeat: "no-repeat" 
           }}
         >
-          <div className=" absolute inset-0"></div>
-          <div className="relative z-14">
+          <div className="absolute inset-0"></div>
+          <div className="relative flex flex-col items-center text-center mx-auto">
+
             <motion.h2
-              className="bg-black border-indigo-800 font-Audiowide rounded text-base p-2 tracking-tight my-6 mx-auto max-w-xl text-center hover:bg-techviolet hover:text-gray-900 transition shadow-xl"
+              className="bg-black border-indigo-800 font-Audiowide rounded justify-items-center p-2 tracking-tight my-1 mx-auto max-w-xl text-center hover:bg-techviolet hover:text-gray-900 transition shadow-xl"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.9 }}
@@ -36,7 +37,7 @@ export default function HomePage() {
             </motion.h2>
 
             <motion.p
-              className="text-lg mx-11 mb justify-items-center items"
+              className="text-lg justify-items-center"
               style={{
                 textShadow: "0 0 12px rgba(255, 255, 255, 0.2)",
                 boxShadow: "0 0 10px neonpurple",
@@ -64,27 +65,27 @@ export default function HomePage() {
           </div> */}
 
           <div className="mx-auto flex flex-col items-center gap-8 tracking-wide">
-          <button
-            className="bg-black border border-purple-700 w-80 mx-auto font-mono text-xl tracking-tight text-white px-2 py-2 rounded hover:bg-techViolet hover:text-gray-700 transition duration-300 shadow-xl"
-            style={{
-              boxShadow: "0 0 10px #7C3AED",
-              textShadow: "0 10 12px neonpurple",
-            }}
-          >
-            ./get-started with npm
-          </button>
+            {/* <button
+              className="bg-black border border-purple-700 w-80 mx-auto font-mono text-xl tracking-tight text-white px-2 py-2 rounded hover:bg-techViolet hover:text-gray-700 transition duration-300 shadow-xl"
+              style={{
+                boxShadow: "0 0 10px #7C3AED",
+                textShadow: "0 10 12px neonpurple",
+              }}
+            >
+              ./get-started with npm
+            </button> */}
        
-          <button
-            className="bg-black border border-purple-700 w-75 mx-auto font-mono text-md tracking-tight text-white px-2 py-2 rounded hover:bg-techviolet hover:text-gray-700 transition duration-300   shadow-lg"
-            style={{
-              boxShadow: "0 0 10px #7C3AED",
-              textShadow: "0 0 12px neonpurple",
-            }}
-          >
-            ./contribute on github
-          </button>          
-        </div>
-      </section>
+            {/* <button
+              className="bg-black border border-purple-700 w-75 mx-auto font-mono text-md tracking-tight text-white px-2 py-2 rounded hover:bg-techviolet hover:text-gray-700 transition duration-300   shadow-lg"
+              style={{
+                boxShadow: "0 0 10px #7C3AED",
+                textShadow: "0 0 12px neonpurple",
+              }}
+            >
+              ./contribute on github
+            </button>           */}
+          </div>
+        </section>
 
         <section 
           className="relative py-24 px-6 bg-black overflow-hidden text-center"
@@ -106,14 +107,6 @@ export default function HomePage() {
               The Problem
             </h2>
 
-            <p className="text-sm tracking-tightest text-gray-300 font-code px-3 py-5" style={{ textShadow: "0 0 8px rgba(185, 78, 255, 0.2)" }}>
-              AI drift occurs when a machine learning model's performance degrades over time due to changes in input data 
-              patterns. This leads to inaccurate outputs, often without triggering any warnings. 
-              <br />
-              <br />
-              Early detection and correction of drift is critical to maintaining the reliability and safety of AI-driven systems.
-              <br />
-            </p>
             <p className="text-md leading-tighter text-white px-4 font-Audiowide" style={{ textShadow: "0 0 8px neonpurple" }}>
               Drift occurs when a user’s input or a language model’s output differs from what we would expect, given the data used to train that model.
               <br />
@@ -153,6 +146,7 @@ export default function HomePage() {
             </p>
           </div>
 
+         
     
           <div className="text-center space-x-0">
             <h2
@@ -176,7 +170,7 @@ export default function HomePage() {
 
 
        
-
+{/* 
         <div className="bg-gradient-to-b from-gray-900 to-black p-4 py-10 rounded-lg shadow-inner border border-gray-800 font-mono text-left text-gray-200">
           <p className="text-techViolet mb-2 text-sm">
             analyzeInputDrift(userQuery)
@@ -187,7 +181,7 @@ export default function HomePage() {
           <p>
             Output Cosine Similarity: <span className="text-red-500">.64 ❌</span>
           </p>
-        </div>
+        </div> */}
 
        <section>       
         <div
@@ -274,7 +268,7 @@ export default function HomePage() {
 </section>
 
   
-      <section className="py-20 px-6 text-center bg-black border border-gray-800 font-source-code-pro">
+      {/* <section className="py-20 px-6 text-center bg-black border border-gray-800 font-source-code-pro">
         <h2 className="text-2xl md:text-2xl font-bold text-[rgb(109,24,255)] mb-2 tracking-widest">
           Real Time Monitoring
         </h2>
@@ -287,14 +281,33 @@ export default function HomePage() {
         >
           Monitor your drift now!
         </button>
-      </section>
+      </section> */}
   
+      <section>
+        <div className="mx-auto flex flex-col items-center gap-8 tracking-wide">
+          <button
+            className="bg-black border border-purple-700 w-80 mx-auto font-mono text-xl tracking-tight text-white px-2 py-2 rounded hover:bg-techViolet hover:text-gray-700 transition duration-300 shadow-xl"
+            style={{
+              boxShadow: "0 0 10px #7C3AED",
+              textShadow: "0 10 12px neonpurple",
+            }}
+          >
+            ./get-started with npm
+          </button>
 
+          <button
+              className="bg-black border border-purple-700 w-75 mx-auto font-mono text-md tracking-tight text-white px-2 py-2 rounded hover:bg-techviolet hover:text-gray-700 transition duration-300   shadow-lg"
+              style={{
+                boxShadow: "0 0 10px #7C3AED",
+                textShadow: "0 0 12px neonpurple",
+              }}
+            >
+              ./contribute on github
+            </button> 
+        </div>
+      </section>
       
-        <footer>
-          className="py-10 px-6 text-center text-sm text-gray-700 bg-black border-t border-gray-800"
-          {new Date().getFullYear()} TKYO Drift. All rights reserved.
-        </footer>
+  
     </main>
   )
 }
