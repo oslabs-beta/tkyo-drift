@@ -137,25 +137,9 @@ dist
 
 # AI testing Model
 aiModel/*
-data/concept.input.training.bin 
-data/concept.input.training.lock 
-data/concept.output.training.bin 
-data/concept.output.training.lock 
-data/concept.input.rolling.bin 
-data/concept.output.rolling.bin 
-data/drift_log.csv 
-data/semantic.input.training.bin 
-data/semantic.input.training.lock 
-data/semantic.output.training.bin 
-data/semantic.output.training.lock 
-data/semantic.input.rolling.bin 
-data/semantic.output.rolling.bin
-data/lexical.input.training.bin 
-data/lexical.input.training.lock 
-data/lexical.output.training.bin 
-data/lexical.output.training.lock 
-data/lexical.input.rolling.bin 
-data/lexical.output.rolling.bin
-
 .DS_Store
-.env
+smallTraining.parquet
+tkyo-drift/data/concept.input.training.bin
+.gitignore
+tkyo-drift/data/small_thoughts-train.arrow
+tkyo-drift/data/small_thoughts-test.arrow
