@@ -51,8 +51,8 @@ import { DriftModel } from './util/DriftModel.js';
 //  Models to embed the I/O Data
 export const MODELS = {
   semantic: 'Xenova/all-MiniLM-L12-v2', // Measures change in communication method
-  // concept: 'Xenova/e5-base',            // Measures change in communication intent
-  // lexical: 'Xenova/all-MiniLM-L6-v2',   // Measures change in syntax
+  concept: 'Xenova/e5-base',            // Measures change in communication intent
+  lexical: 'Xenova/all-MiniLM-L6-v2',   // Measures change in syntax
 };
 // Upper limit on I/Os to capture for the training data baseline (this is ignored when using the batch call)
 export const TRAINING_MAX_SIZE = Math.max(10000, 0);
@@ -70,6 +70,7 @@ export const BASELINE_TYPES = ['rolling', 'training'];
 export default async function tkyoDrift(input, output, depth = 0) {
   // Stopwatch START 🏎️
   console.time('Drift Analyzer Full Run');
+  // console.log("input and output", input, output)
   
   // Make model holder object, io types, and baselines (don't change these)
   const driftModels = {};

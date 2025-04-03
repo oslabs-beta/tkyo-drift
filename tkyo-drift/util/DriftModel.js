@@ -8,6 +8,7 @@ import {
   MODEL_CACHE,
 } from '../tkyoDrift.js';
 import { setFloat16, getFloat16 } from '@petamoriken/float16';
+import { Buffer } from 'buffer'
 
 export class DriftModel {
   constructor(modelType, modelName, ioType, baselineType, depth = 0) {
@@ -40,10 +41,8 @@ export class DriftModel {
       this.filePath = filepath;
     } else {
       // If not, set it to use the rolling path instead
-      this.filePath = path.join(
-        OUTPUT_DIR,
-        `${this.modelType}.${this.ioType}.rolling.bin`
-      );
+      this.filePath = path.join(OUTPUT_DIR, `${this.modelType}.${this.ioType}.rolling.bin`);
+      
     }
   }
 
@@ -73,7 +72,7 @@ export class DriftModel {
       pooling: 'mean',
       normalize: this.baselineType !== 'concept',
     });
-
+    // console.log(result.data)
     // Save embedding to the object
     this.embedding = result.data;
 
