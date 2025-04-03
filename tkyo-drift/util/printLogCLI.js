@@ -37,7 +37,7 @@ const filteredRows = rows.filter((row) => {
 // Aggregation Maps
 const columnSums = {};
 const rowCounts = {};
-let totalViolations = 0;
+// let totalViolations = 0;
 
 // Sum up values for averaging
 for (const row of filteredRows) {
@@ -137,6 +137,6 @@ const bottom = '╚' + '═'.repeat(contentWidth) + '╝';
 
 console.log(chalk.redBright(`${top}\n${middle}\n${bottom}`));
 console.log(table.toString());
-console.log(
-  `${totalViolations} total drift events below ${driftThreshold} similarity in ${days}\n`
-);
+// console.log(
+//   `${totalViolations} total drift events below ${driftThreshold} similarity in ${days}\n`
+// );
