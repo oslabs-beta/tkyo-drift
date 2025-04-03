@@ -1,3 +1,5 @@
+// TODO Create method in DriftModel.js
+
 import { spawn } from 'child_process';
 
 const getHNSW = async () => {
@@ -7,7 +9,7 @@ const getHNSW = async () => {
       './pythonHNSW.py',
       // this.ioType,
       // this.modelType,
-      // this.embedding,
+      // JSON.stringify(this.embedding),
       'input',
       'lexical',
       JSON.stringify(query),
@@ -37,9 +39,8 @@ const getHNSW = async () => {
       }
       try {
         //destructures from result after parsing the result, changing it from a string to an object
-        const { labels, distances } = JSON.parse(result);
-        console.log(distances);
-        resolve({ labels, distances });
+        const { centroids, distances } = JSON.parse(result);
+        resolve({ centroids, distances });
       } catch (e) {
         reject(new Error(`Failed to parse Python output: ${e.message}`));
       }

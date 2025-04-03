@@ -9,16 +9,15 @@ def tkyoDriftSetTraining(data_set_Path, input_name="input", output_name="output"
     startTotal = time.perf_counter()
 
     # Define the models
-
     MODELS = {
-        # "semantic": "sentence-transformers/all-MiniLM-L12-v2",
-        # "concept": "intfloat/e5-base",
+        "semantic": "sentence-transformers/all-MiniLM-L12-v2",
+        "concept": "intfloat/e5-base",
         "lexical": "sentence-transformers/all-MiniLM-L6-v2",
     }
 
     IO_TYPES = {
         "input": input_name,
-        # "output": output_name,
+        "output": output_name,
     }
 
     # Iterate through models dictionary
@@ -38,6 +37,7 @@ def tkyoDriftSetTraining(data_set_Path, input_name="input", output_name="output"
 
     return
 
+# TODO Remove hardcoded path, input name, & output name
 DATASET_PATH = "./data/small_thoughts-train.arrow"
 input_name = "problem"
 output_name = "solution"

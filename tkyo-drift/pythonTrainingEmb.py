@@ -40,12 +40,18 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     else:
         raise ValueError(print("Could Not Retrieve Dataset"))
 
+    # This prevents the creation of gradients
     @torch.no_grad()
     # Embedding function
     def embed_data(data):
         # Tokenizes the input data
         inputData = tokenizer(
-            data, return_tensors="pt", padding=True, truncation=True, max_length=512
+            # TODO Look up how truncation and max_length works
+            data,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512,
         ).to(model.device)
         with torch.no_grad():
             outputData = model(**inputData)
@@ -60,7 +66,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Loop through the dataset in batches
     # range(start, stop, step) creates a sequence from 0 to len(dataset) in batch_size increments
-    for i in range(0, 100, batch_size):
+    for i in range(0, len(dataset), batch_size):
         # Get a batch of input texts:
         # dataset[i : i + batch_size] slices the dataset to get current batch
         # [io_type_name] selects just the input column
@@ -100,6 +106,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             f"data/{model_type}.{io_type}.kmeanstraining.bin"
         )
 
+    # TODO Remove this before going live
     # # This is for testing purpose only, delete
     # kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
     # #  Save the embeddings for testing only, delete
