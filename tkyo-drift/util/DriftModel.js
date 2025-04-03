@@ -7,6 +7,7 @@ import {
   TRAINING_MAX_SIZE,
   MODEL_CACHE,
 } from '../tkyoDrift.js';
+import { error } from 'console';
 
 export class DriftModel {
   constructor(modelType, modelName, ioType, baselineType, depth = 0) {
@@ -67,9 +68,9 @@ export class DriftModel {
     // Invoke the load model if it hasn't been done yet
     await this.loadModel();
 
-    let normalizeType = true
-    if (this.modelType === 'concept'){
-      normalizeType = false
+    let normalizeType = true;
+    if (this.modelType === 'concept') {
+      normalizeType = false;
     }
     // Get the embedding for the input, save to object
     const result = await this.embeddingModel(text, {
@@ -87,6 +88,14 @@ export class DriftModel {
     // save byte offset to object
     this.byteOffset = this.embedding.byteOffset;
     //TODO: This may not exist in the return
+
+    // if we throw an error here, it should halt the rest of the code
+    //our check will throw the error if we do not have a match on embedding.length and dims. Given that those are the same, we're being efficient by checking that the two values exist and that they're equal. For some reason, checking if this.byteOffset exists is returning false (e.g. if(this.byteOffset)), despite consistently console logging as "0". Given the todo above, I think we can leave byteOffset out.
+    // console.log(this.embedding, this.dimensions, this.byteOffset)
+    if (this.embedding.length !== this.dimensions) {
+      // console.log(this.byteOffset)
+      throw error('Error making embeddings');
+    }
   }
 
   // * Function to Save Data to file path
@@ -94,22 +103,27 @@ export class DriftModel {
     // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
-    // Create a Float32Array from the embedding
-    const float32Array = new Float32Array(this.embedding);
+    // adding in a try/catch block because this doesn't update anything in our constructor, so we'll need to use this. I don't know if this catch block will ever trigger.
+    try {
+      // Create a Float32Array from the embedding
+      const float32Array = new Float32Array(this.embedding);
 
-    
-    // Convert to Node buffer and write to disk
-    const buffer = Buffer.from(float32Array.buffer);
-    await fs.promises.appendFile(this.filePath, buffer);
+      // Convert to Node buffer and write to disk
+      const buffer = Buffer.from(float32Array.buffer);
+      await fs.promises.appendFile(this.filePath, buffer);
+    } catch (error) {
+      throw error('error saving to binary file', error);
+    }
   }
 
   // * Function to read the contents of the Bins
   async readFromBin() {
+    console.time(this.filePath)
     // Load the raw binary blob (4 bytes per value, saved as float32)
     const stream = fs.createReadStream(this.filePath, {
       highWaterMark: this.dimensions * 4,
     });
-
+    
     // Make a placeholder storage array
     const vectorList = [];
 
@@ -127,12 +141,12 @@ export class DriftModel {
       vectorList.push(float32Array);
     }
     // console.log(this.filePath,vectorList[0])
-    
+
     // Determine if we have less vectors than the rolling max size
     const totalVectors = vectorList.length;
     const vectorCount = Math.min(this.maxSize, totalVectors);
-    
-    console.log(this.filePath,this.dimensions,totalVectors)
+
+    // console.log(this.filePath,this.dimensions,totalVectors)
     // Calculate the start index based on rolling or training window
     const startIndex =
       this.baselineType === 'training'
@@ -149,7 +163,16 @@ export class DriftModel {
 
       // Assign the vector from the float array to the vector array
       this.vectorArray[i] = vector;
+      
     }
+    console.timeEnd(this.filePath)
+    // initialize a length checker to be the training max size for training and the rolling max size for not trainings. We are verifying that the vector array length for each model is equal to the appropriate size (currently 10 for rolling and 10000 for training), and also checking to see if there aren't values listed in totalVectors (totalVectors counts the number of vectors in the file, so if it is falsy we have a problem)
+    const lengthCheck =
+      this.baselineType === 'training' ? TRAINING_MAX_SIZE : ROLLING_MAX_SIZE;
+    if (this.vectorArray.length !== lengthCheck || !totalVectors) {
+      throw error('error reading from binary file');
+    }
+    
   }
 
   // * Function to get baseline value from vectorArray
@@ -166,14 +189,27 @@ export class DriftModel {
           0
         ) / this.vectorArray.length;
     }
+    // this checks two things. First that our baseline array length is equal to dims (should always be true), and second that the baseline array at index 0 is between 1 and -1, inclusively. Currently commented out because our data is returning some NaNs. I'm leaving it at this point right now, but rather than checking at [0], we should probably include it in the for loop so we check every value, not just one. That would be more robust.
+    if (
+      this.baselineArray.length !== this.dimensions
+      //
+      // || !(this.baselineArray[0]<=1 || this.baselineArray>=-1)
+    ) {
+      throw error('Error getting baseline');
+    }
+    // console.log(this.baselineArray.length, this.dimensions)
   }
-
+  // TODO: add error handling for getCosineSimilarity and getEuclideanDistance
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
     // Calculate the dot product of the A and B arrays
     let dotProduct = 0;
     for (let i = 0; i < this.dimensions; i++) {
       dotProduct += this.embedding[i] * this.baselineArray[i];
+      // commenting this out because I am having some trouble identifying whether or not dotProduct is an actual number. NaN is still classified as number, and we can't successfully check if dotProduct is strictly equal to NaN to throw an error at that point.
+      // if (dotProduct === NaN){
+      //   console.log("NaN")
+      // }
     }
 
     // Calculate the magnitude of A
