@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { pipeline } from '@xenova/transformers';
+import { spawn } from 'child_process';
 import {
   OUTPUT_DIR,
   ROLLING_MAX_SIZE,
@@ -67,9 +68,9 @@ export class DriftModel {
     // Invoke the load model if it hasn't been done yet
     await this.loadModel();
 
-    let normalizeType = true
-    if (this.modelType === 'concept'){
-      normalizeType = false
+    let normalizeType = true;
+    if (this.modelType === 'concept') {
+      normalizeType = false;
     }
     // Get the embedding for the input, save to object
     const result = await this.embeddingModel(text, {
@@ -97,7 +98,6 @@ export class DriftModel {
     // Create a Float32Array from the embedding
     const float32Array = new Float32Array(this.embedding);
 
-    
     // Convert to Node buffer and write to disk
     const buffer = Buffer.from(float32Array.buffer);
     await fs.promises.appendFile(this.filePath, buffer);
@@ -127,12 +127,12 @@ export class DriftModel {
       vectorList.push(float32Array);
     }
     // console.log(this.filePath,vectorList[0])
-    
+
     // Determine if we have less vectors than the rolling max size
     const totalVectors = vectorList.length;
     const vectorCount = Math.min(this.maxSize, totalVectors);
-    
-    console.log(this.filePath,this.dimensions,totalVectors)
+
+    console.log(this.filePath, this.dimensions, totalVectors);
     // Calculate the start index based on rolling or training window
     const startIndex =
       this.baselineType === 'training'
