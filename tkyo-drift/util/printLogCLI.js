@@ -6,6 +6,7 @@ import { MODELS, IO_TYPES, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
 
 // Constants & CLI Args;
 const logPath = path.join(OUTPUT_DIR, 'drift_log.csv');
+console.log(`Log Path: ${logPath}`);
 const args = process.argv.slice(2);
 const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]);
 const driftThreshold = 0.9;
