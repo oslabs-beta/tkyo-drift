@@ -130,7 +130,7 @@ export class DriftModel {
     const totalVectors = vectorList.length;
     const vectorCount = Math.min(this.maxSize, totalVectors);
     
-    console.log(this.filePath,this.dimensions,totalVectors)
+    // console.log(this.filePath,this.dimensions,totalVectors)
     // Calculate the start index based on rolling or training window
     const startIndex =
       this.baselineType === 'training'
