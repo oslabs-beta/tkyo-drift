@@ -41,10 +41,8 @@ export class DriftModel {
       this.filePath = filepath;
     } else {
       // If not, set it to use the rolling path instead
-      this.filePath = path.join(
-        OUTPUT_DIR,
-        `${this.modelType}.${this.ioType}.rolling.bin`
-      );
+      this.filePath = path.join(OUTPUT_DIR, `${this.modelType}.${this.ioType}.rolling.bin`);
+      
     }
   }
 
@@ -78,7 +76,7 @@ export class DriftModel {
       pooling: 'mean',
       normalize: normalizeType,
     });
-
+    // console.log(result.data)
     // Save embedding to the object
     this.embedding = result.data;
 
@@ -146,7 +144,11 @@ export class DriftModel {
     // Determine if we have less vectors than the rolling max size
     const totalVectors = vectorList.length;
     const vectorCount = Math.min(this.maxSize, totalVectors);
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> feat/openAI
     // console.log(this.filePath,this.dimensions,totalVectors)
     // Calculate the start index based on rolling or training window
     const startIndex =
