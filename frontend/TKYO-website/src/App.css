@@ -1,0 +1,10 @@
+/* App.css */
+.card {
+  padding: 1rem;
+  background-color: #f5f5f5;
+  border-radius: 0.5rem;
+}
+.read-the-docs {
+  opacity: 0.6;
+  font-style: italic;
+}
