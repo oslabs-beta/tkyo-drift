@@ -1,21 +1,15 @@
 # Import helper function to create kmeans of data
 import pythonKMeans
-
 # This is good for vectors/matrices
 import numpy as np
-
 from transformers import AutoModel, AutoTokenizer
-
 import torch
-
 from datasets import Dataset
-
 # Allows the use of time functions
 import time
 
 import os
 
-# TODO Change file location to util
 def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Starts the total function timer

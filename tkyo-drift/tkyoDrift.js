@@ -177,8 +177,8 @@ export default async function tkyoDrift(input, output, depth = 0) {
   console.timeEnd('Drift Analyzer Full Run');
 }
 
-// const input = 'Purple balloons baba peel mexican tufts of dried spaghetti';
-// const output = 'I am sorry, but I do know know how to respond to this request.';
-// console.log('Input:', input);
-// console.log('Output:', output);
-// tkyoDrift(input, output);
+const input = 'Purple balloons baba peel mexican tufts of dried spaghetti';
+const output = 'I am sorry, but I do know know how to respond to this request.';
+console.log('Input:', input);
+console.log('Output:', output);
+tkyoDrift(input, output);

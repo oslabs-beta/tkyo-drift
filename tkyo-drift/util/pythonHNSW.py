@@ -45,6 +45,7 @@ def HNSW(io_type, model_type, query):
             # Returns the vectors from the binary file
             return data.reshape(num_vectors, dims), num_vectors, dims
 
+    # TODO: These paths are relative from their execution directory, so this may not work in production
     # Define file paths
     kmeans_file = f"data/{model_type}.{io_type}.kmeanstraining.bin"
     training_file = f"data/{model_type}.{io_type}.training.bin"
@@ -77,7 +78,7 @@ def HNSW(io_type, model_type, query):
     # Add data to the index
     index.add_items(trainingData)
 
-    # Destructering labels and distances from the nearest neighbors query
+    # Destructuring labels and distances from the nearest neighbors query
     labels, distances = index.knn_query(query, k=k)
 
     # Ends timing for the entire function

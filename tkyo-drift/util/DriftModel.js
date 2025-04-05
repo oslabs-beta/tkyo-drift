@@ -96,7 +96,7 @@ export class DriftModel {
     // if we throw an error here, it should halt the rest of the code
     //our check will throw the error if we do not have a match on embedding.length and dims. Given that those are the same, we're being efficient by checking that the two values exist and that they're equal. For some reason, checking if this.byteOffset exists is returning false (e.g. if(this.byteOffset)), despite consistently console logging as "0". Given the todo above, I think we can leave byteOffset out.
     // console.log(this.embedding, this.dimensions, this.byteOffset)
-    if (!((this.embedding.length === this.dimensions) && this.embedding)) {
+    if (!(this.embedding.length === this.dimensions && this.embedding)) {
       // console.log(this.byteOffset)
       throw error('Error making embeddings');
     }
@@ -107,76 +107,108 @@ export class DriftModel {
     // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
-    // adding in a try/catch block because this doesn't update anything in our constructor, so we'll need to use this. I don't know if this catch block will ever trigger.
     try {
-      // Create a Float32Array from the embedding
+      // Make a new float 32 array out of the embedding
       const float32Array = new Float32Array(this.embedding);
 
-      // Convert to Node buffer and write to disk
-      const buffer = Buffer.from(float32Array.buffer);
-      await fs.promises.appendFile(this.filePath, buffer);
+      // Buffer the vector
+      const embeddingBuffer = Buffer.from(float32Array.buffer);
+
+      // Check if the file exists
+      const fileExists = fs.existsSync(this.filePath);
+
+      // If the file doesn't exist, add the vector, and write a new header
+      if (!fileExists) {
+        // Allocate space for the header shit
+        const headerBuffer = Buffer.alloc(8);
+
+        // Total vectors is 1 on first write
+        headerBuffer.writeUInt32LE(1, 0);
+
+        // Update the header with vector dimensions
+        headerBuffer.writeUInt32LE(this.dimensions, 4);
+
+        // Concatenate the header data with the vector data
+        const fullBuffer = Buffer.concat([headerBuffer, embeddingBuffer]);
+
+        // Write the header to the file
+        await fs.promises.writeFile(this.filePath, fullBuffer);
+
+        // If the file does exist, append the vector, and update the existing header
+      } else {
+        // Append new vector
+        await fs.promises.appendFile(this.filePath, embeddingBuffer);
+
+        // Recalculate new vector count
+        const stats = await fs.promises.stat(this.filePath);
+        const vectorsInBinCount = Math.floor(
+          ((stats.size - 8) / this.dimensions) * 4
+        );
+
+        // Update header: numVectors
+        const headerBuffer = Buffer.alloc(4);
+        headerBuffer.writeUInt32LE(vectorsInBinCount, 0);
+
+        const fileHandle = await fs.promises.open(this.filePath, 'r+');
+        // Write just the first 4 bytes, skip the 2nd 4 since the dimensions don't change.
+        await fileHandle.write(headerBuffer, 0, 4, 0);
+        await fileHandle.close();
+      }
     } catch (error) {
-      throw error('error saving to binary file', error);
+      throw new Error(`Error saving to binary file: ${error.message}`);
     }
   }
 
   // * Function to read the contents of the Bins
   async readFromBin() {
-    console.time(this.filePath);
-    // Load the raw binary blob (4 bytes per value, saved as float32)
-    const stream = fs.createReadStream(this.filePath, {
-      highWaterMark: this.dimensions * 4,
+    return new Promise((resolve, reject) => {
+      const pyProg = spawn('python3', [
+        './util/pythonHNSW.py',
+        this.ioType,
+        this.modelType,
+        JSON.stringify(Array.from(this.embedding)),
+      ]);
+
+      let result = '';
+      let error = '';
+
+      // This function is for accepting to data from python
+      // Data is the binary form of the result from python
+      pyProg.stdout.on('data', (data) => {
+        // Result is the stringified version of the result from python
+        result += data.toString();
+      });
+
+      // This function is for error handling
+      // Data is the binary from of the error from python
+      pyProg.stderr.on('data', (data) => {
+        // Error is the stringified version of the error from python
+        error += data.toString();
+      });
+
+      pyProg.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Python process failed: ${error}`));
+          return;
+        }
+
+        // TODO: distances here is a set of euclidean distances, but from what to what?
+        // ? If this is the euclidean dist from the HNSW's nearest neighbor to the input vector
+        // ? then should we pass this directly to the log maker function?
+        // Destructure from result after parsing the result, changing it from a string to an object
+        const { centroids, distances } = JSON.parse(result);
+
+        // TODO: vectorArray was named before we were using HNSW, so presumably it needs a rename
+        // Assign the output of the centroids to vectorArray
+        this.vectorArray = centroids;
+
+        resolve({ centroids, distances });
+      });
     });
-
-    // Make a placeholder storage array
-    const vectorList = [];
-
-    // Iterate through each chunk from the data stream
-    for await (const chunk of stream) {
-      // Guard against partial chunks
-      if (chunk.length !== this.dimensions * 4) continue;
-      // Interpret the chunk directly as Float32Array
-      const float32Array = new Float32Array(
-        chunk.buffer,
-        chunk.byteOffset,
-        this.dimensions
-      );
-      // Push to the storage array
-      vectorList.push(float32Array);
-    }
-    // console.log(this.filePath,vectorList[0])
-
-    // Determine if we have less vectors than the rolling max size
-    const totalVectors = vectorList.length;
-    const vectorCount = Math.min(this.maxSize, totalVectors);
-
-    // console.log(this.filePath,this.dimensions,totalVectors)
-    // Calculate the start index based on rolling or training window
-    const startIndex =
-      this.baselineType === 'training'
-        ? 0
-        : Math.max(totalVectors - vectorCount - 1, 0);
-
-    // Set vector array to an array of arrays equal to the size of vector count
-    this.vectorArray = new Array(vectorCount);
-
-    // Populate the final vector array with the most recent N vectors
-    for (let i = 0; i < vectorCount; i++) {
-      // Calculate the start and end positions need to pull out of from the float array
-      const vector = vectorList[startIndex + i];
-
-      // Assign the vector from the float array to the vector array
-      this.vectorArray[i] = vector;
-    }
-    console.timeEnd(this.filePath);
-    // initialize a length checker to be the training max size for training and the rolling max size for not trainings. We are verifying that the vector array length for each model is equal to the appropriate size (currently 10 for rolling and 10000 for training), and also checking to see if there aren't values listed in totalVectors (totalVectors counts the number of vectors in the file, so if it is falsy we have a problem)
-    const lengthCheck =
-      this.baselineType === 'training' ? TRAINING_MAX_SIZE : ROLLING_MAX_SIZE;
-    if (this.vectorArray.length !== lengthCheck || !totalVectors) {
-      throw error('error reading from binary file');
-    }
   }
 
+  // TODO: The readfrombin now gets the baseline if the result is only 1 vector.
+  // ? For optimization, this step should be skipped when the length of vectorArray is 1
   // * Function to get baseline value from vectorArray
   getBaseline() {
     // TODO: This is K of All Vectors, and we should not use that K value
@@ -201,6 +233,7 @@ export class DriftModel {
     }
     // console.log(this.baselineArray.length, this.dimensions)
   }
+
   // TODO: add error handling for getCosineSimilarity and getEuclideanDistance
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
@@ -228,6 +261,7 @@ export class DriftModel {
     return Math.min(1, dotProduct / (magnitudeA * magnitudeB));
   }
 
+  // * Function to calculate the euclidean distance from the baseline
   getEuclideanDistance() {
     // Calculate the distance between the embedding and baselineArray
     return Math.sqrt(
