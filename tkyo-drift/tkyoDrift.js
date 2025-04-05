@@ -58,7 +58,7 @@ export const MODELS = {
 // Upper limit on I/Os to capture for the training data baseline (this is ignored when using the batch call)
 export const TRAINING_MAX_SIZE = Math.max(10000, 0);
 // Upper limit on I/Os to capture for the rolling data baseline (this is never ignored)
-export const ROLLING_MAX_SIZE = Math.max(10, 0);
+export const ROLLING_MAX_SIZE = Math.max(1000, 0);
 // Location to save data files
 // TODO: This is relative to where the script runs, which will put data in weird places
 export const OUTPUT_DIR = path.resolve('./data');
@@ -109,12 +109,12 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
   // ------------- << Get Embeddings >> -------------
   // * Get embeddings for all inputs and outputs in parallel
-  await Promise.all( Object.entries(driftModels).map(([key, model]) => {
+  await Promise.all(
+    Object.entries(driftModels).map(([key, model]) => {
       const isInput = key.includes('.input.');
       const text = isInput ? input : output;
       return model.makeEmbedding(text);
     })
- 
   );
 
   // ------------- << Save Data >> -------------
@@ -132,14 +132,13 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
   // ------------- << Read Bin Files >> -------------
   // * Read up to N embeddings from binary blobs in parallel
-  // ! NOTE: Read ops are non-locking, this is safe
+  // ! NOTE: Read ops are non-blocking, this is safe
   // ? See Training Max Size/Rolling Max Size in ReadMe for more info
   // For each model, read from disk
-  console.time("read from bin")
   await Promise.all(
     Object.values(driftModels).map((model) => model.readFromBin())
   );
-  console.timeEnd("read from bin")
+
   // ------------- << Get Baseline >> -------------
   // * Calculate Baseline values for each model in serial
   // For each model, calculate the baseline
@@ -171,8 +170,8 @@ export default async function tkyoDrift(input, output, depth = 0) {
   // Make shared ID and date for I/O Pair
   const sharedID = v4();
   makeLogEntry(sharedID, similarityResults, 'COS', depth);
-  makeLogEntry(sharedID, distanceResults, 'EUC', depth)
-  
+  makeLogEntry(sharedID, distanceResults, 'EUC', depth);
+
   // Stopwatch END 🏁 (Comment this out in production)
   console.timeEnd('Drift Analyzer Full Run');
 }

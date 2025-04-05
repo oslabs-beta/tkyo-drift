@@ -142,7 +142,7 @@ export class DriftModel {
         // Recalculate new vector count
         const stats = await fs.promises.stat(this.filePath);
         const vectorsInBinCount = Math.floor(
-          ((stats.size - 8) / this.dimensions) * 4
+          (stats.size - 8) / (this.dimensions * 4)
         );
 
         // Update header: numVectors
@@ -159,14 +159,18 @@ export class DriftModel {
     }
   }
 
-  // * Function to read the contents of the Bins
+  // * Function to read the contents of the Bins, Build an HNSW, and then get the
   async readFromBin() {
+    // ! This is for testing, remove later
+    // console.log("Embedding sent to Python (first 5):", this.embedding.slice(0, 5));
+
     return new Promise((resolve, reject) => {
       const pyProg = spawn('python3', [
         './util/pythonHNSW.py',
         this.ioType,
         this.modelType,
         JSON.stringify(Array.from(this.embedding)),
+        this.baselineType,
       ]);
 
       let result = '';
@@ -182,6 +186,7 @@ export class DriftModel {
       // This function is for error handling
       // Data is the binary from of the error from python
       pyProg.stderr.on('data', (data) => {
+        console.error('[PYTHON STDERR]', data.toString()); // ! This is for testing, remove later
         // Error is the stringified version of the error from python
         error += data.toString();
       });
@@ -207,11 +212,14 @@ export class DriftModel {
     });
   }
 
-  // TODO: The readfrombin now gets the baseline if the result is only 1 vector.
-  // ? For optimization, this step should be skipped when the length of vectorArray is 1
   // * Function to get baseline value from vectorArray
   getBaseline() {
-    // TODO: This is K of All Vectors, and we should not use that K value
+    // If readFromBin returns a single vector, skip the math and return out.
+    if (this.vectorArray.length === 1) {
+      this.baselineArray = new Float32Array(this.vectorArray[0]);
+      return;
+    }
+
     // Set the baseline array to the proper dimensions
     this.baselineArray = new Float32Array(this.dimensions);
 
@@ -223,15 +231,17 @@ export class DriftModel {
           0
         ) / this.vectorArray.length;
     }
-    // this checks two things. First that our baseline array length is equal to dims (should always be true), and second that the baseline array at index 0 is between 1 and -1, inclusively. Currently commented out because our data is returning some NaNs. I'm leaving it at this point right now, but rather than checking at [0], we should probably include it in the for loop so we check every value, not just one. That would be more robust.
-    if (
-      this.baselineArray.length !== this.dimensions
-      //
-      // || !(this.baselineArray[0]<=1 || this.baselineArray>=-1)
-    ) {
-      throw error('Error getting baseline');
+
+    // Sanity check: Make sure the baseline is valid
+    const valid = this.baselineArray.every(
+      (val) => typeof val === 'number' && !Number.isNaN(val)
+    );
+
+    if (!valid || this.baselineArray.length !== this.dimensions) {
+      throw error(
+        'Error getting baseline: invalid values or dimension mismatch'
+      );
     }
-    // console.log(this.baselineArray.length, this.dimensions)
   }
 
   // TODO: add error handling for getCosineSimilarity and getEuclideanDistance

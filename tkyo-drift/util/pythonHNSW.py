@@ -12,11 +12,12 @@ import math
 import json
 # command-line argument handling
 import sys
+# Allow error logging for testing purposes
+import traceback
 
 # TODO Check if we need to use HNSW for rolling data, if so modify code
-# TODO Move file location to util
 
-def HNSW(io_type, model_type, query):
+def HNSW(io_type, model_type, query, baseline_type):
 
     # Parse the JSON query string into a numpy array
     try:
@@ -40,7 +41,10 @@ def HNSW(io_type, model_type, query):
 
             # Check that the length of the imported training data
             if len(data) != num_vectors * dims:
+                print(f"⚠️ Header says: {num_vectors} vectors of {dims} dims", file=sys.stderr)
+                print(f"⚠️ But only {len(data)} floats were read", file=sys.stderr)
                 raise ValueError("Data is incorrect - size mismatch")
+
 
             # Returns the vectors from the binary file
             return data.reshape(num_vectors, dims), num_vectors, dims
@@ -48,21 +52,25 @@ def HNSW(io_type, model_type, query):
     # TODO: These paths are relative from their execution directory, so this may not work in production
     # Define file paths
     kmeans_file = f"data/{model_type}.{io_type}.kmeanstraining.bin"
+    rolling_file = f"data/{model_type}.{io_type}.rolling.bin"
     training_file = f"data/{model_type}.{io_type}.training.bin"
 
     # Check if the kmeans file exists, otherwise use training
-    if os.path.exists(kmeans_file):
+    if baseline_type == "rolling" and os.path.exists(rolling_file):
+        trainingData, num_vectors, dims = load_embeddings(rolling_file)
+    elif os.path.exists(kmeans_file):
         trainingData, num_vectors, dims = load_embeddings(kmeans_file)
     elif os.path.exists(training_file):
         trainingData, num_vectors, dims = load_embeddings(training_file)
     else:
-        raise FileNotFoundError(f"Neither {kmeans_file} nor {training_file} found!")
+        raise FileNotFoundError(
+            f"No appropriate embedding file found for baseline_type={baseline_type}"
+        )
 
     # Set number of neighbors (k) based on dataset type
-    if os.path.exists(kmeans_file):
-        # Use single centroid for kmeans data
+    if baseline_type == "rolling":
         k = 1
-    else:
+    else:  # training
         k = min(20, max(10, int(math.log2(num_vectors)) + 5))
 
     # Initialize HNSW index
@@ -91,32 +99,26 @@ def HNSW(io_type, model_type, query):
         "distances": distances[0].tolist(),
     }
 
-# TODO Remove hardcoded testing stuff
-# # This is for testing purposes only, delete
-# io_type = 'input'
-# model_type = 'lexical'
-# query = np.random.rand(1, 384).astype(np.float32)
-# HNSW(io_type, model_type, query)
-
 # Checks that the file is run directly, not as an import
 if __name__ == "__main__":
     # Error handling to check that there are 3 arguments and 1 script
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         # Print the error
         print(
             json.dumps(
                 {
-                    "error": "Usage: python3 pythonHNSW.py <io_type> <model_type> <query_json>"
+                    "error": "Usage: python3 pythonHNSW.py <io_type> <model_type> <query_json> <baseline_type>"
                 }
             )
         )
         sys.exit(1)
     try:
         # assign the value of result to the evaluated result of invoking HNSW with the 3 input arguments
-        result = HNSW(sys.argv[1], sys.argv[2], sys.argv[3])
+        result = HNSW(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
         # Returns the value of result to javascript file
         print(json.dumps(result))
         # Catch all error handling
     except Exception as e:
+        traceback.print_exc(file=sys.stderr)
         print(json.dumps({"error": str(e)}))
         sys.exit(1)
