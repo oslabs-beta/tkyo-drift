@@ -3,8 +3,7 @@ import path from 'path';
 import { OUTPUT_DIR } from '../tkyoDrift.js';
 
 export default function makeLogEntry(id, mathObject, type, depth) {
-
-  let logPath = ''
+  let logPath = '';
   // Construct the destination to the log in the data folder
   if (type === 'COS') {
     logPath = path.join(OUTPUT_DIR, 'COS_log.csv');
@@ -41,7 +40,9 @@ export default function makeLogEntry(id, mathObject, type, depth) {
   const headerCols = ['ID', 'DEPTH', 'TIMESTAMP', 'I/O TYPE'];
   for (const model of modelTypes) {
     for (const baseline of baselineTypes) {
-      headerCols.push(`${model.toUpperCase()} ${baseline.toUpperCase()} ${type}`);
+      headerCols.push(
+        `${model.toUpperCase()} ${baseline.toUpperCase()} ${type}`
+      );
     }
   }
   const headers = headerCols.join(',') + '\n';
@@ -52,7 +53,7 @@ export default function makeLogEntry(id, mathObject, type, depth) {
     for (const model of modelTypes) {
       for (const baseline of baselineTypes) {
         const val = grouped[ioType]?.[model]?.[baseline] ?? '';
-        row.push(val);        
+        row.push(val);
       }
     }
     return row.join(',') + '\n';
