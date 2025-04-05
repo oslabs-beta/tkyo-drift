@@ -45,46 +45,63 @@ def HNSW(io_type, model_type, query, baseline_type):
                 print(f"⚠️ But only {len(data)} floats were read", file=sys.stderr)
                 raise ValueError("Data is incorrect - size mismatch")
 
-
+            # Check to make sure this is not the first write AND remove the new entry for the rolling dataset
+            if baseline_type == 'rolling' and len(num_vectors) != 1:
+                data = data[:-1]
+                
             # Returns the vectors from the binary file
             return data.reshape(num_vectors, dims), num_vectors, dims
 
     # TODO: These paths are relative from their execution directory, so this may not work in production
     # Define file paths
-    kmeans_file = f"data/{model_type}.{io_type}.kmeanstraining.bin"
-    rolling_file = f"data/{model_type}.{io_type}.rolling.bin"
-    training_file = f"data/{model_type}.{io_type}.training.bin"
+    kmeans_file = f"data/{model_type}.{io_type}.{baseline_type}.kmeans.bin"
+    data_file = f"data/{model_type}.{io_type}.{baseline_type}.bin"
 
     # Check if the kmeans file exists, otherwise use training
-    if baseline_type == "rolling" and os.path.exists(rolling_file):
-        trainingData, num_vectors, dims = load_embeddings(rolling_file)
-    elif os.path.exists(kmeans_file):
-        trainingData, num_vectors, dims = load_embeddings(kmeans_file)
-    elif os.path.exists(training_file):
-        trainingData, num_vectors, dims = load_embeddings(training_file)
+    if os.path.exists(kmeans_file):
+        data, num_vectors, dims = load_embeddings(kmeans_file)
+    elif os.path.exists(data_file):
+        data, num_vectors, dims = load_embeddings(data_file)
+        if (num_vectors < 10):
+            return {
+                "centroids": data.tolist(),
+                "distances": None,
+            }
     else:
-        raise FileNotFoundError(
-            f"No appropriate embedding file found for baseline_type={baseline_type}"
-        )
+        raise FileNotFoundError(f"Neither {kmeans_file} nor {data} found!")
 
     # Set number of neighbors (k) based on dataset type
-    if baseline_type == "rolling":
+    if os.path.exists(kmeans_file):
+        # Use single centroid for kmeans data
         k = 1
-    else:  # training
+    else:
         k = min(20, max(10, int(math.log2(num_vectors)) + 5))
 
+    # TODO: Maybe there is a better way to scale these values other than linearly
+    # Set ef_construction to len(data)-1 when len(data) is less than 200
+    if (len(data) < 200):
+        ef_construction = max(1, len(data) - 1)
+    else:
+        ef_construction = 200
+        
+    # Set M to len(data)-1 when len(data) is less than 16
+    if (len(data) < 16):
+        M = max(1, len(data) - 1)
+    else:
+        M = 16
     # Initialize HNSW index
+
     # 'l2' = Euclidean distance
     index = hnswlib.Index(space="l2", dim=dims)
 
-    # TODO Research ef_construction
     # Build the index
     # ef_construction : Controls build speed/accuracy trade-off
     # M:  Number of bidirectional links per node
-    index.init_index(max_elements=len(trainingData), ef_construction=200, M=16)
+    # TODO: max_elements was set to len(data), but I think it was meant to be num_vectors?
+    index.init_index(max_elements=num_vectors, ef_construction=ef_construction, M=M)
 
     # Add data to the index
-    index.add_items(trainingData)
+    index.add_items(data)
 
     # Destructuring labels and distances from the nearest neighbors query
     labels, distances = index.knn_query(query, k=k)
@@ -92,7 +109,7 @@ def HNSW(io_type, model_type, query, baseline_type):
     # Ends timing for the entire function
     endTotal = time.perf_counter()
 
-    centroids = trainingData[labels[0]]
+    centroids = data[labels[0]]
 
     return {
         "centroids": centroids.tolist(),

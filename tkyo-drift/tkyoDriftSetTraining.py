@@ -1,5 +1,5 @@
 # Import helper function to load and embed the data
-import pythonTrainingEmb
+from util import pythonTrainingEmb
 
 import time
 
@@ -38,7 +38,7 @@ def tkyoDriftSetTraining(data_set_Path, input_name="input", output_name="output"
     return
 
 # TODO Remove hardcoded path, input name, & output name
-DATASET_PATH = "../data/small_thoughts-train.arrow"
+DATASET_PATH = "./data/small_thoughts-train.arrow"
 input_name = "problem"
 output_name = "solution"
 tkyoDriftSetTraining(DATASET_PATH, input_name, output_name)

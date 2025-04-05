@@ -75,108 +75,118 @@ export default async function tkyoDrift(input, output, depth = 0) {
   // Make model holder object, io types, and baselines (don't change these)
   const driftModels = {};
 
-  //  ------------- << Construct Model Combinations >> -------------
-  // * For each model, for each ioType, for each baselineType,
-  // make a model and assign to driftModels object
-  for (const [modelType, modelName] of Object.entries(MODELS)) {
-    for (const ioType of IO_TYPES) {
-      for (const baselineType of BASELINE_TYPES) {
-        const key = `${modelType}.${ioType}.${baselineType}`;
-        driftModels[key] = new DriftModel(
-          modelType,
-          modelName,
-          ioType,
-          baselineType
-        );
+  // ------------- << BEGIN try/catch Error Handling >> -------------
+  // * Error handling is done within model method calls, which send the error to the catch block.
+  try {
+    //  ------------- << Construct Model Combinations >> -------------
+    // * For each model, for each ioType, for each baselineType,
+    // make a model and assign to driftModels object
+    for (const [modelType, modelName] of Object.entries(MODELS)) {
+      for (const ioType of IO_TYPES) {
+        for (const baselineType of BASELINE_TYPES) {
+          const key = `${modelType}.${ioType}.${baselineType}`;
+          driftModels[key] = new DriftModel(
+            modelType,
+            modelName,
+            ioType,
+            baselineType
+          );
+        }
       }
     }
+
+    //  ------------- << Initialize Model File Pathing >> -------------
+    // * For each model, invoke set file path method
+    // ! NOTE: If training data is not supplied, it will use the rolling file's path
+    // Yes, this is intentional, check the ReadMe for why...
+    for (const model of Object.values(driftModels)) {
+      model.setFilePath();
+    }
+
+    //  ------------- << Load the Xenova Models >> -------------
+    // * Load all models sequentially
+    // ! NOTE: Loading models sequentially is intentional, as they check the cache before attempting to load
+    for (const model of Object.values(driftModels)) {
+      await model.loadModel();
+    }
+
+    // ------------- << Get Embeddings >> -------------
+    // * Get embeddings for all inputs and outputs in parallel
+    await Promise.all(
+      Object.entries(driftModels).map(([key, model]) => {
+        const isInput = key.includes('.input.');
+        const text = isInput ? input : output;
+        return model.makeEmbedding(text);
+      })
+    );
+
+    // ------------- << Save Data >> -------------
+    // * Save the embedding to the rolling/training files in parallel
+    // ! NOTE: Write ops are done to separate files, this is safe
+    // Check if directory exists
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
+
+    // For each model, write to disk
+    await Promise.all(
+      Object.values(driftModels).map((model) => model.saveToBin())
+    );
+
+    // ------------- << Read Bin Files >> -------------
+    // * Read up to N embeddings from binary blobs in parallel
+    // ! NOTE: Read ops are non-blocking, this is safe
+    // ? See Training Max Size/Rolling Max Size in ReadMe for more info
+    // For each model, read from disk
+    await Promise.all(
+      Object.values(driftModels).map((model) => model.readFromBin())
+    );
+
+    // ------------- << Get Baseline >> -------------
+    // * Calculate Baseline values for each model in serial
+    // For each model, calculate the baseline
+    for (const model of Object.values(driftModels)) {
+      model.getBaseline();
+    }
+
+    // ------------- << Get Cosine Similarity >> -------------
+    // * Calculate Cosine Similarity between input and baseline in serial
+    const similarityResults = Object.fromEntries(
+      Object.entries(driftModels).map(([key, model]) => [
+        key,
+        model.getCosineSimilarity(),
+      ])
+    );
+
+    // ------------- << Get Euclidean Distance >> -------------
+    // * Calculate Euclidean Dist. between input and baseline in serial
+    const distanceResults = Object.fromEntries(
+      Object.entries(driftModels).map(([key, model]) => [
+        key,
+        model.getEuclideanDistance(),
+      ])
+    );
+
+    // console.log(distanceResults);
+    // ------------- << Make & Append Log Entries >> -------------
+    // * Push the results to the log
+    // Make shared ID and date for I/O Pair
+    const sharedID = v4();
+    makeLogEntry(sharedID, similarityResults, 'COS', depth);
+    makeLogEntry(sharedID, distanceResults, 'EUC', depth);
+
+    // ------------- << END try/catch Error Handling >> -------------
+    // TODO: This needs to write to the error log
+  } catch (error) {
+    console.log('NEW ERROR: ', error);
   }
-
-  //  ------------- << Initialize Model File Pathing >> -------------
-  // * For each model, invoke set file path method
-  // ! NOTE: If training data is not supplied, it will use the rolling file's path
-  // Yes, this is intentional, check the ReadMe for why...
-  for (const model of Object.values(driftModels)) {
-    model.setFilePath();
-  }
-
-  //  ------------- << Load the Xenova Models >> -------------
-  // * Load all models sequentially
-  // ! NOTE: Loading models sequentially is intentional, as they check the cache before attempting to load
-  for (const model of Object.values(driftModels)) {
-    await model.loadModel();
-  }
-
-  // ------------- << Get Embeddings >> -------------
-  // * Get embeddings for all inputs and outputs in parallel
-  await Promise.all(
-    Object.entries(driftModels).map(([key, model]) => {
-      const isInput = key.includes('.input.');
-      const text = isInput ? input : output;
-      return model.makeEmbedding(text);
-    })
-  );
-
-  // ------------- << Save Data >> -------------
-  // * Save the embedding to the rolling/training files in parallel
-  // ! NOTE: Write ops are done to separate files, this is safe
-  // Check if directory exists
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
-
-  // For each model, write to disk
-  await Promise.all(
-    Object.values(driftModels).map((model) => model.saveToBin())
-  );
-
-  // ------------- << Read Bin Files >> -------------
-  // * Read up to N embeddings from binary blobs in parallel
-  // ! NOTE: Read ops are non-blocking, this is safe
-  // ? See Training Max Size/Rolling Max Size in ReadMe for more info
-  // For each model, read from disk
-  await Promise.all(
-    Object.values(driftModels).map((model) => model.readFromBin())
-  );
-
-  // ------------- << Get Baseline >> -------------
-  // * Calculate Baseline values for each model in serial
-  // For each model, calculate the baseline
-  for (const model of Object.values(driftModels)) {
-    model.getBaseline();
-  }
-
-  // ------------- << Get Cosine Similarity >> -------------
-  // * Calculate Cosine Similarity between input and baseline in serial
-  const similarityResults = Object.fromEntries(
-    Object.entries(driftModels).map(([key, model]) => [
-      key,
-      model.getCosineSimilarity(),
-    ])
-  );
-
-  // ------------- << Get Euclidean Distance >> -------------
-  // * Calculate Euclidean Dist. between input and baseline in serial
-  const distanceResults = Object.fromEntries(
-    Object.entries(driftModels).map(([key, model]) => [
-      key,
-      model.getEuclideanDistance(),
-    ])
-  );
-
-  // console.log(distanceResults);
-  // ------------- << Make & Append Log Entries >> -------------
-  // * Push the results to the log
-  // Make shared ID and date for I/O Pair
-  const sharedID = v4();
-  makeLogEntry(sharedID, similarityResults, 'COS', depth);
-  makeLogEntry(sharedID, distanceResults, 'EUC', depth);
 
   // Stopwatch END 🏁 (Comment this out in production)
   console.timeEnd('Drift Analyzer Full Run');
 }
 
-const input = 'Purple balloons baba peel mexican tufts of dried spaghetti';
+const input =
+  'If you had a time machine, but could only go to the past or the future once and never return, which would you choose and why?';
 const output = 'I am sorry, but I do know know how to respond to this request.';
 console.log('Input:', input);
 console.log('Output:', output);

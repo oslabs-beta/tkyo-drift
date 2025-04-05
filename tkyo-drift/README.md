@@ -22,6 +22,10 @@ For each individual input and output, the following workflow is executed in roug
 ```
 Note that the size of input/output text, embedding dimensions, and how many embedding models are chosen will influence the speed of the workflow. Regardless, if tkyoDrift() is called asynchronously, it should not impact your workflow unless you expect a sustained high volume of user inputs per second.
 ```
+# How do you install this thing?
+
+Add text here!
+Run this 16 times...
 
 # How do you use this thing?
 

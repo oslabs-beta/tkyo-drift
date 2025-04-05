@@ -1,5 +1,5 @@
 # Import helper function to create kmeans of data
-import pythonKMeans
+from util import pythonKMeans
 # This is good for vectors/matrices
 import numpy as np
 from transformers import AutoModel, AutoTokenizer
@@ -79,6 +79,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     os.makedirs("data", exist_ok=True)
 
     if (len(embeddings) < 10, 000):
+        print('Using Embeddings')
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
         # Assign the dimensions of each vector
@@ -94,11 +95,23 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             # Then write the data
             embeddings.astype(np.float32).tofile(f)
     else:
+        print('Using KMEANS')
         kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
-        # Save the embeddings
-        embeddings.astype(np.float32).tofile(
-            f"data/{model_type}.{io_type}.kmeanstraining.bin"
-        )
+
+        # Assign the number of vectors for the training data
+        num_vectors = kMeansEmbedding.shape[0]
+        # Assign the dimensions of each vector
+        dims = kMeansEmbedding.shape[1]
+
+        # Create header bytes (8 bytes total)
+        header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
+        
+        # Write to file (header first, then data)
+        with open(f"data/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
+            # Write 8-byte header first
+            f.write(header_bytes)
+            # Then write the data
+            kMeansEmbedding.astype(np.float32).tofile(f)
 
     # TODO Remove this before going live
     # # This is for testing purpose only, delete
