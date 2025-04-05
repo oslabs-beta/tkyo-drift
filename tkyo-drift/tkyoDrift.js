@@ -50,7 +50,6 @@ import { DriftModel } from './util/DriftModel.js';
 // * Global Variables for the utilities
 //  Models to embed the I/O Data
 export const MODELS = {
-  // TODO: Changing this after the log is created will brick the log
   semantic: 'Xenova/all-MiniLM-L12-v2', // Measures change in communication method
   concept: 'Xenova/e5-base', // Measures change in communication intent
   lexical: 'Xenova/all-MiniLM-L6-v2', // Measures change in syntax
@@ -183,6 +182,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
   console.timeEnd('Drift Analyzer Full Run');
 }
 
+// TODO: Remove hardcoded input/output values
 const input =
   'If you had a time machine, but could only go to the past or the future once and never return, which would you choose and why?';
 const output = 'I am sorry, but I do know know how to respond to this request.';

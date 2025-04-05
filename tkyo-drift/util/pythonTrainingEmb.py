@@ -10,7 +10,7 @@ import time
 
 import os
 # TODO: This has a chance of failing during write, but will fail silently.
-# We should implement a solution, like writing to a temp file, and then renaming the temp file after completion
+# ! We should implement a solution, like writing to a temp file, and then renaming the temp file after completion
 def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Starts the total function timer
@@ -37,11 +37,15 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # This prevents the creation of gradients
     @torch.no_grad()
+    # TODO: This section effectively means we are only embedding the first 512 tokens, and all data thereafter is lost
+    # ! Should be ok for most AI workflows, but this will be a problem for ones that take large text inputs
+    # truncation	Cuts off long sequences (from the end)
+    # max_length	Upper bound for number of tokens
+    # padding	Adds [PAD] tokens to match batch size
     # Embedding function
     def embed_data(data):
         # Tokenizes the input data
         inputData = tokenizer(
-            # TODO Look up how truncation and max_length works
             data,
             return_tensors="pt",
             padding=True,
@@ -110,12 +114,6 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             f.write(header_bytes)
             # Then write the data
             kMeansEmbedding.astype(np.float32).tofile(f)
-
-    # TODO Remove this before going live
-    # # This is for testing purpose only, delete
-    # kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
-    # #  Save the embeddings for testing only, delete
-    # kMeansEmbedding.astype(np.float32).tofile(f"data/{model_type}.{io_type}.kmeanstraining.bin")
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()

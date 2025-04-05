@@ -7,24 +7,16 @@ from sklearn.cluster import KMeans
 # Allows the use of time functions
 import time
 
-# TODO Update file location to util
 def kMeansClustering(embeddings):
 
     # Starts the total function timer
     startTotal = time.perf_counter()
-
-    # TODO Check if we need these error handling
-    # Replace NaNs with zero
-    embeddings = np.nan_to_num(embeddings)
-    # Prevent extreme values
-    embeddings = np.clip(embeddings, -1e6, 1e6)
 
     # Sets num_vectors to the amount of vectors
     num_vectors = len(embeddings)
     # Sets dims to the length of the first vector in the array
     dims = len(embeddings[0])
 
-    # TODO Add section to readme about this
     # Determines the amount of clusters
     num_of_clusters = int(np.sqrt(num_vectors / 2))
 
@@ -43,15 +35,6 @@ def kMeansClustering(embeddings):
 
     # assigns the resulting array of centroids to centroids variable
     centroids = kmeans.cluster_centers_
-
-    # TODO Remove prints before going live
-    # This is printing the centroids to the console
-    # The f is just for formatting
-    # print(f"Centroids:", centroids)
-
-    # Print the shape of the centroids array to verify it matches expectations
-    # Shape will be (n_clusters, dims)
-    # print(f"Centroids shape: {centroids.shape}")
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()

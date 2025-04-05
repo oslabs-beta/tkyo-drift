@@ -1,3 +1,13 @@
+TODO: Add an explanation for why the first value will never show drift
+
+TODO: Add an install section
+
+TODO: Add section to readme about how to determine the amount of clusters in pythonKMeans.py (num_of_clusters = int(np.sqrt(num_vectors / 2)))
+
+TODO: Add a section to readme about embedding max length, tokenization, and silent truncation
+
+TODO: Changine embedding model names (for example, from 'lexical' to 'bagofwords') will brick the log. Warn the people.
+
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 
 TKYO Drift is a lightweight, transparent drift tracking library for AI workflows. It embeds I/O Pairs and compares them to a configurable baseline to detect drift in semantic, conceptual, or lexical meaning over time.
@@ -24,8 +34,8 @@ Note that the size of input/output text, embedding dimensions, and how many embe
 ```
 # How do you install this thing?
 
-Add text here!
-Run this 16 times...
+
+
 
 # How do you use this thing?
 
@@ -46,7 +56,7 @@ You can interact with this library in 3 ways;
 - Computed the drift score using cosine similarity.
 
 ```
-* Depth tracking is useful when you have multiple chain of thought workflows, and want to track drift per depth level. Just pass a depth argument for how nested each I/O is. For example, your model might have Human -> AI -> AI, where the first input and last output would be depth = 0, and the middleware AI's input and output would be depth = 1. 
+* Depth tracking is useful when you have multiple chain of thought workflows, and want to track drift per depth level. Just pass a depth argument for how nested each I/O is. For example, your model might have Human -> AI -> AI, where the first input and last output would be depth = 0, and the middleware AI's input and output would be depth = 1.
 ```
 
 ## Training Ingestion

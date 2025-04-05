@@ -15,8 +15,6 @@ import sys
 # Allow error logging for testing purposes
 import traceback
 
-# TODO Check if we need to use HNSW for rolling data, if so modify code
-
 def HNSW(io_type, model_type, query, baseline_type):
 
     # Parse the JSON query string into a numpy array
@@ -97,7 +95,6 @@ def HNSW(io_type, model_type, query, baseline_type):
     # Build the index
     # ef_construction : Controls build speed/accuracy trade-off
     # M:  Number of bidirectional links per node
-    # TODO: max_elements was set to len(data), but I think it was meant to be num_vectors?
     index.init_index(max_elements=num_vectors, ef_construction=ef_construction, M=M)
 
     # Add data to the index

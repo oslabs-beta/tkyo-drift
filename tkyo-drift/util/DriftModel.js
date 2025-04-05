@@ -89,16 +89,19 @@ export class DriftModel {
 
       // Save dimensions to object (the actual vector dim is at position 1)
       this.dimensions = this.embedding.length;
-      //TODO: This may not exist from the return
 
       // save byte offset to object
       this.byteOffset = this.embedding.byteOffset;
-      //TODO: This may not exist in the return
 
       // If we throw an error here, it should halt the rest of the code
-      if (!(this.embedding.length === this.dimensions && this.embedding)) {
+      if (!(this.embedding.length === this.dimensions)) {
         throw error('Dimension Mismatch');
       }
+
+      if (!this.byteOffset === result.data.byteOffset){
+        throw error('ByteOffset mismatch');
+      }
+      
     } catch (error) {
       throw Error(`Error in makeEmbedding: ${error.message}`);
     }
@@ -106,7 +109,6 @@ export class DriftModel {
 
   // * Function to Save Data to file path
   async saveToBin() {
-    // TODO: Data sanitization needs to go here, we need to check file dimensions against the incoming embedding dimensions, and abort writing if they mismatch
     // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
@@ -175,6 +177,7 @@ export class DriftModel {
 
         const fileHandle = await fs.promises.open(this.filePath, 'r+');
         // Rewrite the full header 8 bytes to prevent bin corruption
+        // ! Once upon a time, we only updated the first 4 bytes. It broke everything.
         await fileHandle.write(headerBuffer, 0, 8, 0);
         await fileHandle.close();
       }
@@ -225,7 +228,6 @@ export class DriftModel {
           // Destructure from result after parsing the result, changing it from a string to an object
           const { centroids, distances } = JSON.parse(result);
 
-          // TODO: vectorArray was named before we were using HNSW, so presumably it needs a rename
           // Assign the output of the centroids to vectorArray
           this.vectorArray = centroids;
 
