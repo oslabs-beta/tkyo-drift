@@ -2,12 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { pipeline } from '@xenova/transformers';
 import { spawn } from 'child_process';
-import {
-  OUTPUT_DIR,
-  ROLLING_MAX_SIZE,
-  TRAINING_MAX_SIZE,
-  MODEL_CACHE,
-} from '../tkyoDrift.js';
+import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
 import { error } from 'console';
 
 export class DriftModel {
@@ -17,8 +12,6 @@ export class DriftModel {
     this.modelName = modelName;
     this.ioType = ioType;
     this.depth = depth;
-    this.maxSize = // TODO: What happens when someone loads 50k training files, are we still limiting the max size to N?
-      baselineType === 'rolling' ? ROLLING_MAX_SIZE : TRAINING_MAX_SIZE;
     this.filePath = null;
     this.embedding = null;
     this.byteOffset = null;
@@ -27,8 +20,6 @@ export class DriftModel {
     this.baselineArray = null;
     this.embeddingModel = null;
   }
-
-  //TODO Work on global error handling
 
   // * Function to set the file path
   setFilePath() {
@@ -50,7 +41,7 @@ export class DriftModel {
         );
       }
     } catch (error) {
-      throw Error('Error in setFilePath: ', error);
+      throw Error(`Error in setFilePath: ${error.message}`);
     }
   }
 
@@ -73,7 +64,7 @@ export class DriftModel {
       );
       MODEL_CACHE[this.modelName] = this.embeddingModel;
     } catch (error) {
-      throw Error('Error in loadModel: ', error);
+      throw Error(`Error in loadModel: ${error.message}`);
     }
   }
 
@@ -104,20 +95,18 @@ export class DriftModel {
       this.byteOffset = this.embedding.byteOffset;
       //TODO: This may not exist in the return
 
-      // if we throw an error here, it should halt the rest of the code
-      //our check will throw the error if we do not have a match on embedding.length and dims. Given that those are the same, we're being efficient by checking that the two values exist and that they're equal. For some reason, checking if this.byteOffset exists is returning false (e.g. if(this.byteOffset)), despite consistently console logging as "0". Given the todo above, I think we can leave byteOffset out.
-      // console.log(this.embedding, this.dimensions, this.byteOffset)
+      // If we throw an error here, it should halt the rest of the code
       if (!(this.embedding.length === this.dimensions && this.embedding)) {
-        // console.log(this.byteOffset)
-        throw error('Error making embeddings');
+        throw error('Dimension Mismatch');
       }
     } catch (error) {
-      throw Error('Error in makeEmbedding: ', error);
+      throw Error(`Error in makeEmbedding: ${error.message}`);
     }
   }
 
   // * Function to Save Data to file path
   async saveToBin() {
+    // TODO: Data sanitization needs to go here, we need to check file dimensions against the incoming embedding dimensions, and abort writing if they mismatch
     // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
@@ -130,6 +119,13 @@ export class DriftModel {
 
       // Check if the file exists
       const fileExists = fs.existsSync(this.filePath);
+
+      // Validate embedding dimensions BEFORE writing
+      if (float32Array.length !== this.dimensions) {
+        throw new Error(
+          `Dimension mismatch: embedding has ${float32Array.length} values, expected ${this.dimensions}`
+        );
+      }
 
       // If the file doesn't exist, add the vector, and write a new header
       if (!fileExists) {
@@ -150,6 +146,19 @@ export class DriftModel {
 
         // If the file does exist, append the vector, and update the existing header
       } else {
+        // Validate the file header matches this.dimensions BEFORE writing
+        const fd = await fs.promises.open(this.filePath, 'r');
+        const headerBuffer = Buffer.alloc(8);
+        await fd.read(headerBuffer, 0, 8, 0);
+        await fd.close();
+
+        const fileVectorDims = headerBuffer.readUInt32LE(4);
+        if (fileVectorDims !== this.dimensions) {
+          throw new Error(
+            `File dimension mismatch: file expects ${fileVectorDims}, embedding has ${this.dimensions}`
+          );
+        }
+
         // Append new vector
         await fs.promises.appendFile(this.filePath, embeddingBuffer);
 
@@ -160,16 +169,17 @@ export class DriftModel {
         );
 
         // Update header: numVectors
-        const headerBuffer = Buffer.alloc(4);
-        headerBuffer.writeUInt32LE(vectorsInBinCount, 0);
+        const fullHeaderBuffer = Buffer.alloc(8);
+        fullHeaderBuffer.writeUInt32LE(vectorsInBinCount, 0);
+        fullHeaderBuffer.writeUInt32LE(this.dimensions, 4);
 
         const fileHandle = await fs.promises.open(this.filePath, 'r+');
-        // Write just the first 4 bytes, skip the 2nd 4 since the dimensions don't change.
-        await fileHandle.write(headerBuffer, 0, 4, 0);
+        // Rewrite the full header 8 bytes to prevent bin corruption
+        await fileHandle.write(headerBuffer, 0, 8, 0);
         await fileHandle.close();
       }
     } catch (error) {
-      throw Error('Error in saveToBin: ', error);
+      throw Error(`Error in saveToBin: ${error.message}`);
     }
   }
 
@@ -223,7 +233,7 @@ export class DriftModel {
         });
       });
     } catch (error) {
-      throw Error('Error in readFromBin: ', error);
+      throw Error(`Error in readFromBin: ${error.message}`);
     }
   }
 
@@ -259,11 +269,10 @@ export class DriftModel {
         );
       }
     } catch (error) {
-      throw Error('Error in getBaseline: ', error);
+      throw Error(`Error in getBaseline: ${error.message}`);
     }
   }
 
-  // TODO: add error handling for getCosineSimilarity and getEuclideanDistance
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
     try {
@@ -290,7 +299,7 @@ export class DriftModel {
       // return the cosine similarity between A and B, clamping the results to prevent rounding errors
       return Math.min(1, dotProduct / (magnitudeA * magnitudeB));
     } catch (error) {
-      throw Error('Error in getCosineSimilarity: ', error);
+      throw Error(`Error in getCosineSimilarity: ${error.message}`);
     }
   }
 
@@ -306,7 +315,7 @@ export class DriftModel {
         )
       );
     } catch (error) {
-      throw Error('Error in getEuclideanDistance: ', error);
+      throw Error(`Error in getEuclideanDistance: ${error.message}`);
     }
   }
 }

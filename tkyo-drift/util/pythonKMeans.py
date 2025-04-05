@@ -47,11 +47,11 @@ def kMeansClustering(embeddings):
     # TODO Remove prints before going live
     # This is printing the centroids to the console
     # The f is just for formatting
-    print(f"Centroids:", centroids)
+    # print(f"Centroids:", centroids)
 
     # Print the shape of the centroids array to verify it matches expectations
     # Shape will be (n_clusters, dims)
-    print(f"Centroids shape: {centroids.shape}")
+    # print(f"Centroids shape: {centroids.shape}")
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()

@@ -46,7 +46,7 @@ def HNSW(io_type, model_type, query, baseline_type):
                 raise ValueError("Data is incorrect - size mismatch")
 
             # Check to make sure this is not the first write AND remove the new entry for the rolling dataset
-            if baseline_type == 'rolling' and len(num_vectors) != 1:
+            if baseline_type == 'rolling' and num_vectors != 1:
                 data = data[:-1]
                 
             # Returns the vectors from the binary file

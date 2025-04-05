@@ -9,7 +9,8 @@ from datasets import Dataset
 import time
 
 import os
-
+# TODO: This has a chance of failing during write, but will fail silently.
+# We should implement a solution, like writing to a temp file, and then renaming the temp file after completion
 def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Starts the total function timer
@@ -77,9 +78,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Create data directory if it doesn't exist
     os.makedirs("data", exist_ok=True)
-
-    if (len(embeddings) < 10, 000):
-        print('Using Embeddings')
+    if (len(embeddings) < 10000):
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
         # Assign the dimensions of each vector
@@ -95,7 +94,6 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             # Then write the data
             embeddings.astype(np.float32).tofile(f)
     else:
-        print('Using KMEANS')
         kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
 
         # Assign the number of vectors for the training data

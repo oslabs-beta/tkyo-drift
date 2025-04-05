@@ -55,10 +55,6 @@ export const MODELS = {
   concept: 'Xenova/e5-base', // Measures change in communication intent
   lexical: 'Xenova/all-MiniLM-L6-v2', // Measures change in syntax
 };
-// Upper limit on I/Os to capture for the training data baseline (this is ignored when using the batch call)
-export const TRAINING_MAX_SIZE = Math.max(10000, 0);
-// Upper limit on I/Os to capture for the rolling data baseline (this is never ignored)
-export const ROLLING_MAX_SIZE = Math.max(1000, 0);
 // Location to save data files
 // TODO: This is relative to where the script runs, which will put data in weird places
 export const OUTPUT_DIR = path.resolve('./data');
@@ -179,6 +175,8 @@ export default async function tkyoDrift(input, output, depth = 0) {
     // TODO: This needs to write to the error log
   } catch (error) {
     console.log('NEW ERROR: ', error);
+    // let errorID = v4()
+    // makeErrorLogEntry(errorID, error)
   }
 
   // Stopwatch END 🏁 (Comment this out in production)
@@ -188,6 +186,6 @@ export default async function tkyoDrift(input, output, depth = 0) {
 const input =
   'If you had a time machine, but could only go to the past or the future once and never return, which would you choose and why?';
 const output = 'I am sorry, but I do know know how to respond to this request.';
-console.log('Input:', input);
-console.log('Output:', output);
+// console.log('Input:', input);
+// console.log('Output:', output);
 tkyoDrift(input, output);
