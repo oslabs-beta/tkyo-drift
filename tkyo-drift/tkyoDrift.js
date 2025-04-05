@@ -109,12 +109,12 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
   // ------------- << Get Embeddings >> -------------
   // * Get embeddings for all inputs and outputs in parallel
-  await Promise.all(
-    Object.entries(driftModels).map(([key, model]) => {
+  await Promise.all( Object.entries(driftModels).map(([key, model]) => {
       const isInput = key.includes('.input.');
       const text = isInput ? input : output;
       return model.makeEmbedding(text);
     })
+ 
   );
 
   // ------------- << Save Data >> -------------
@@ -135,10 +135,11 @@ export default async function tkyoDrift(input, output, depth = 0) {
   // ! NOTE: Read ops are non-locking, this is safe
   // ? See Training Max Size/Rolling Max Size in ReadMe for more info
   // For each model, read from disk
+  console.time("read from bin")
   await Promise.all(
     Object.values(driftModels).map((model) => model.readFromBin())
   );
-
+  console.timeEnd("read from bin")
   // ------------- << Get Baseline >> -------------
   // * Calculate Baseline values for each model in serial
   // For each model, calculate the baseline
@@ -176,10 +177,8 @@ export default async function tkyoDrift(input, output, depth = 0) {
   console.timeEnd('Drift Analyzer Full Run');
 }
 
-const input = 'Purple balloons baba peel mexican tufts of dried spaghetti';
-const output = 'I am sorry, but I do know know how to respond to this request.';
-// const input = process.argv[2];
-// const output = process.argv[3];
-console.log('Input:', input);
-console.log('Output:', output);
-tkyoDrift(input, output);
+// const input = 'Purple balloons baba peel mexican tufts of dried spaghetti';
+// const output = 'I am sorry, but I do know know how to respond to this request.';
+// console.log('Input:', input);
+// console.log('Output:', output);
+// tkyoDrift(input, output);
