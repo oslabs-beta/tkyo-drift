@@ -7,7 +7,7 @@ from sklearn.cluster import KMeans
 # Allows the use of time functions
 import time
 
-
+# TODO Update file location to util
 def kMeansClustering(embeddings):
 
     # Starts the total function timer

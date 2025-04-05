@@ -15,7 +15,7 @@ import time
 
 import os
 
-
+# TODO Change file location to util
 def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Starts the total function timer

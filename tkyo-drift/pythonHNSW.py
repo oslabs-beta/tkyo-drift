@@ -14,6 +14,7 @@ import json
 import sys
 
 # TODO Check if we need to use HNSW for rolling data, if so modify code
+# TODO Move file location to util
 
 def HNSW(io_type, model_type, query):
 

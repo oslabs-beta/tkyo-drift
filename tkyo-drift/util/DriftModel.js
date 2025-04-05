@@ -28,6 +28,9 @@ export class DriftModel {
     this.embeddingModel = null;
   }
 
+  //TODO Work on global error handling
+  //TODO Address read/write operation order
+
   // * Function to set the file path
   setFilePath() {
     // Construct the file path for this model
@@ -41,8 +44,10 @@ export class DriftModel {
       this.filePath = filepath;
     } else {
       // If not, set it to use the rolling path instead
-      this.filePath = path.join(OUTPUT_DIR, `${this.modelType}.${this.ioType}.rolling.bin`);
-      
+      this.filePath = path.join(
+        OUTPUT_DIR,
+        `${this.modelType}.${this.ioType}.rolling.bin`
+      );
     }
   }
 
@@ -91,7 +96,7 @@ export class DriftModel {
     // if we throw an error here, it should halt the rest of the code
     //our check will throw the error if we do not have a match on embedding.length and dims. Given that those are the same, we're being efficient by checking that the two values exist and that they're equal. For some reason, checking if this.byteOffset exists is returning false (e.g. if(this.byteOffset)), despite consistently console logging as "0". Given the todo above, I think we can leave byteOffset out.
     // console.log(this.embedding, this.dimensions, this.byteOffset)
-    if (this.embedding.length !== this.dimensions) {
+    if (!((this.embedding.length === this.dimensions) && this.embedding)) {
       // console.log(this.byteOffset)
       throw error('Error making embeddings');
     }
@@ -117,12 +122,12 @@ export class DriftModel {
 
   // * Function to read the contents of the Bins
   async readFromBin() {
-    console.time(this.filePath)
+    console.time(this.filePath);
     // Load the raw binary blob (4 bytes per value, saved as float32)
     const stream = fs.createReadStream(this.filePath, {
       highWaterMark: this.dimensions * 4,
     });
-    
+
     // Make a placeholder storage array
     const vectorList = [];
 
@@ -144,11 +149,7 @@ export class DriftModel {
     // Determine if we have less vectors than the rolling max size
     const totalVectors = vectorList.length;
     const vectorCount = Math.min(this.maxSize, totalVectors);
-<<<<<<< HEAD
 
-=======
-    
->>>>>>> feat/openAI
     // console.log(this.filePath,this.dimensions,totalVectors)
     // Calculate the start index based on rolling or training window
     const startIndex =
@@ -166,16 +167,14 @@ export class DriftModel {
 
       // Assign the vector from the float array to the vector array
       this.vectorArray[i] = vector;
-      
     }
-    console.timeEnd(this.filePath)
+    console.timeEnd(this.filePath);
     // initialize a length checker to be the training max size for training and the rolling max size for not trainings. We are verifying that the vector array length for each model is equal to the appropriate size (currently 10 for rolling and 10000 for training), and also checking to see if there aren't values listed in totalVectors (totalVectors counts the number of vectors in the file, so if it is falsy we have a problem)
     const lengthCheck =
       this.baselineType === 'training' ? TRAINING_MAX_SIZE : ROLLING_MAX_SIZE;
     if (this.vectorArray.length !== lengthCheck || !totalVectors) {
       throw error('error reading from binary file');
     }
-    
   }
 
   // * Function to get baseline value from vectorArray

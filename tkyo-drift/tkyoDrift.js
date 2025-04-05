@@ -117,7 +117,6 @@ export default async function tkyoDrift(input, output, depth = 0) {
  
   );
 
-
   // ------------- << Save Data >> -------------
   // * Save the embedding to the rolling/training files in parallel
   // ! NOTE: Write ops are done to separate files, this is safe
@@ -180,8 +179,6 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
 // const input = 'Purple balloons baba peel mexican tufts of dried spaghetti';
 // const output = 'I am sorry, but I do know know how to respond to this request.';
-// // const input = process.argv[2];
-// // const output = process.argv[3];
 // console.log('Input:', input);
 // console.log('Output:', output);
 // tkyoDrift(input, output);
