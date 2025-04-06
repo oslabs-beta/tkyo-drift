@@ -117,7 +117,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
     // ! NOTE: If training data is not supplied, it will use the rolling file's path
     // Yes, this is intentional, check the ReadMe for why...
     for (const model of Object.values(driftModels)) {
-      model.setFilePath();
+      model.setFilePaths();
     }
 
     //  ------------- << Load the Xenova Models >> -------------
@@ -137,7 +137,17 @@ export default async function tkyoDrift(input, output, depth = 0) {
       })
     );
 
-    //  ------------- << Save Data >> -------------
+    //  ------------- << Get Scalar Metrics >> -------------
+    // * Calculate PSI values for scalar metric comparison
+    await Promise.all(
+      Object.entries(driftModels).map(async ([key, model]) => {
+        const isInput = key.includes('.input.');
+        const text = isInput ? input : output;
+        model.captureScalarMetrics(text);
+      })
+    );
+
+    //  ------------- << Save Embedding Data >> -------------
     // * Save the embedding to the rolling/training files in parallel
     // ! NOTE: Write ops are done to separate files, this is safe
     // Check if directory exists
@@ -145,9 +155,25 @@ export default async function tkyoDrift(input, output, depth = 0) {
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     }
 
+    // Create subdirectories for vectors, scalars, and logs
+    const subdirectories = ['vectors', 'scalars', 'logs'];
+    for (const dir of subdirectories) {
+      const subdirPath = path.join(OUTPUT_DIR, dir);
+      if (!fs.existsSync(subdirPath)) {
+        fs.mkdirSync(subdirPath, { recursive: true });
+      }
+    }
+
     // For each model, write to disk
     await Promise.all(
       Object.values(driftModels).map((model) => model.saveToBin())
+    );
+
+    //  ------------- << Save Scalar Data >> -------------
+    // * Save the embedding to the rolling/training files in parallel
+    // ! NOTE: Write ops are done to separate files, this is safe
+    await Promise.all(
+      Object.values(driftModels).map((model) => model.saveScalarMetrics())
     );
 
     //  ------------- << Read Bin Files >> -------------
@@ -192,9 +218,9 @@ export default async function tkyoDrift(input, output, depth = 0) {
     makeLogEntry(sharedID, similarityResults, 'COS', depth);
     makeLogEntry(sharedID, distanceResults, 'EUC', depth);
 
-  //  ------------- << END try/catch Error Handling >> -------------
-  // * Push any errors to the error log 
-  // ! NOTE: This platform intentionally fails silently
+    //  ------------- << END try/catch Error Handling >> -------------
+    // * Push any errors to the error log
+    // ! NOTE: This platform intentionally fails silently
   } catch (error) {
     makeErrorLogEntry(error);
   }

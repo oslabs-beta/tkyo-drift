@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { pipeline } from '@xenova/transformers';
-import { spawn } from 'child_process';
-import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
 import { error } from 'console';
+import fsPromises from 'fs/promises';
+import { spawn } from 'child_process';
+import { pipeline } from '@xenova/transformers';
+import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
 
 export class DriftModel {
   constructor(modelType, modelName, ioType, baselineType, depth = 0) {
@@ -12,35 +13,47 @@ export class DriftModel {
     this.modelName = modelName;
     this.ioType = ioType;
     this.depth = depth;
-    this.filePath = null;
     this.distance = null;
     this.embedding = null;
     this.byteOffset = null;
     this.dimensions = null;
     this.vectorArray = null;
+    this.scalarMetrics = null;
     this.baselineArray = null;
     this.embeddingModel = null;
+    this.scalarFilePath = null;
+    this.embeddingFilePath = null;
   }
 
   // * Function to set the file path
-  setFilePath() {
+  setFilePaths() {
     try {
-      // Construct the file path for this model
-      const filepath = path.join(
+      // ?NOTE: training baselines may use KMeans files, which are handled inside the Python logic.
+      // This JS path is not used for reading training data.
+
+      // Construct the base file path for this model
+      const baseName = `${this.modelType}.${this.ioType}.${this.baselineType}`;
+
+      // Assemble the embedding file path (.bin file)
+      const vectorPath = path.join(OUTPUT_DIR, 'vectors', `${baseName}.bin`);
+      const fallbackPath = path.join(
         OUTPUT_DIR,
-        `${this.modelType}.${this.ioType}.${this.baselineType}.bin`
+        'vectors',
+        `${this.modelType}.${this.ioType}.rolling.bin`
       );
 
-      // Check to see if a file exists at that path, if yes, use it
-      if (fs.existsSync(filepath)) {
-        this.filePath = filepath;
-      } else {
-        // If not, set it to use the rolling path instead
-        this.filePath = path.join(
-          OUTPUT_DIR,
-          `${this.modelType}.${this.ioType}.rolling.bin`
-        );
-      }
+      // Use rolling file path if there is no training data.
+      // ? ctrl+f the README for hybrid mode if you want to know why
+      this.embeddingFilePath = fs.existsSync(vectorPath)
+        ? vectorPath
+        : fallbackPath;
+
+      // 2. Scalar metric path (.scalar.jsonl)
+      this.scalarFilePath = path.join(
+        OUTPUT_DIR,
+        'scalars',
+        `${baseName}.scalar.jsonl`
+      );
     } catch (error) {
       throw new Error(
         `Error in setFilePath for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
@@ -150,7 +163,7 @@ export class DriftModel {
       const embeddingBuffer = Buffer.from(float32Array.buffer);
 
       // Check if the file exists
-      const fileExists = fs.existsSync(this.filePath);
+      const fileExists = fs.existsSync(this.embeddingFilePath);
 
       // Validate embedding dimensions BEFORE writing
       if (float32Array.length !== this.dimensions) {
@@ -174,12 +187,12 @@ export class DriftModel {
         const fullBuffer = Buffer.concat([headerBuffer, embeddingBuffer]);
 
         // Write the header to the file
-        await fs.promises.writeFile(this.filePath, fullBuffer);
+        await fs.promises.writeFile(this.embeddingFilePath, fullBuffer);
 
         // If the file does exist, append the vector, and update the existing header
       } else {
         // Validate the file header matches this.dimensions BEFORE writing
-        const fd = await fs.promises.open(this.filePath, 'r');
+        const fd = await fs.promises.open(this.embeddingFilePath, 'r');
         const headerBuffer = Buffer.alloc(8);
         await fd.read(headerBuffer, 0, 8, 0);
         await fd.close();
@@ -192,10 +205,10 @@ export class DriftModel {
         }
 
         // Append new vector
-        await fs.promises.appendFile(this.filePath, embeddingBuffer);
+        await fs.promises.appendFile(this.embeddingFilePath, embeddingBuffer);
 
         // Recalculate new vector count
-        const stats = await fs.promises.stat(this.filePath);
+        const stats = await fs.promises.stat(this.embeddingFilePath);
         const vectorsInBinCount = Math.floor(
           (stats.size - 8) / (this.dimensions * 4)
         );
@@ -205,7 +218,7 @@ export class DriftModel {
         fullHeaderBuffer.writeUInt32LE(vectorsInBinCount, 0);
         fullHeaderBuffer.writeUInt32LE(this.dimensions, 4);
 
-        const fileHandle = await fs.promises.open(this.filePath, 'r+');
+        const fileHandle = await fs.promises.open(this.embeddingFilePath, 'r+');
         // Rewrite the full header 8 bytes to prevent bin corruption
         // ! Once upon a time, we only updated the first 4 bytes. It broke everything.
         await fileHandle.write(headerBuffer, 0, 8, 0);
@@ -266,9 +279,9 @@ export class DriftModel {
 
           // Assign the average of all distances from centroids to the distance
           this.distance =
-          Array.isArray(distances) && distances.length > 0
-          // Since distance is null occasionally, we only assign if it isn't
-              ? distances.reduce((sum, val) => sum + val, 0) / distances.length
+            Array.isArray(distances) && distances.length > 0
+              ? // Since distance is null occasionally, we only assign if it isn't
+                distances.reduce((sum, val) => sum + val, 0) / distances.length
               : null;
 
           resolve({ centroids, distances });
@@ -415,6 +428,60 @@ export class DriftModel {
     } catch (error) {
       throw new Error(
         `Error in getEuclideanDistance for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
+    }
+  }
+
+  // * Function to siphon PSI distribution metrics
+  captureScalarMetrics(text) {
+    try {
+      // Only capture scalar metrics if the training scalar file exists
+      // ? Scalar metrics are only useful if compared against training data.
+      const trainingScalarPath = path.join(
+        OUTPUT_DIR,
+        'scalars',
+        `${this.modelType}.${this.ioType}.training.scalar.jsonl`
+      );
+
+      // Skip logging if no baseline exists
+      if (!fs.existsSync(trainingScalarPath)) {
+        return;
+      }
+
+      // Get L2 Norm value
+      const norm = Math.sqrt(
+        this.embedding.reduce((sum, val) => sum + val * val, 0)
+      );
+
+      // Get Raw Input Length
+      // TODO: DO we want to use a tokenizer for token length instead of raw input length?
+      const textLength = text.length;
+
+      // Store the metrics
+      this.scalarMetrics = {
+        timestamp: new Date().toISOString(),
+        metrics: {
+          norm,
+          textLength,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        `Error in captureScalarMetrics for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
+    }
+  }
+
+  async saveScalarMetrics() {
+    try {
+      // Serialize the metric object as a single JSON line
+      const line = JSON.stringify(this.scalarMetrics) + '\n';
+
+      // Write to file
+      await fsPromises.appendFile(this.scalarFilePath, line);
+    } catch (error) {
+      throw new Error(
+        `Error in saveScalarMetrics for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
       );
     }
   }

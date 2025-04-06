@@ -6,9 +6,9 @@ export default function makeLogEntry(id, mathObject, type, depth) {
   let logPath = '';
   // Construct the destination to the log in the data folder
   if (type === 'COS') {
-    logPath = path.join(OUTPUT_DIR, 'COS_log.csv');
+    logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
   } else {
-    logPath = path.join(OUTPUT_DIR, 'EUC_log.csv');
+    logPath = path.join(OUTPUT_DIR, 'logs', 'EUC_log.csv');
   }
 
   // Create a timestamp

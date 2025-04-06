@@ -52,8 +52,8 @@ def HNSW(io_type, model_type, query, baseline_type):
 
     # TODO: These paths are relative from their execution directory, so this may not work in production
     # Define file paths
-    kmeans_file = f"data/{model_type}.{io_type}.{baseline_type}.kmeans.bin"
-    data_file = f"data/{model_type}.{io_type}.{baseline_type}.bin"
+    kmeans_file = f"data/kmeans/{model_type}.{io_type}.{baseline_type}.kmeans.bin"
+    data_file = f"data/vectors/{model_type}.{io_type}.{baseline_type}.bin"
 
     # Check if the kmeans file exists, otherwise use training
     if os.path.exists(kmeans_file):

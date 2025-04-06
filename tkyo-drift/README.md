@@ -10,9 +10,17 @@ TODO: Changing embedding model names (for example, from 'lexical' to 'bagOfWords
 
 TODO: Explain limitations of the depth counter and why its only a partial solution.
 
-TODO: We are currently using a Xenova and Hugging Face transformers library split, with xenova in JS (one offs) and HF in PY (batched calls w/ CUDA). We need to explain why we are doing this. As a side note, Xenova IS huggingface, but not maintained by hugging face, its just the JS version of HF's python library maintained by Xenova
+TODO: We are currently using a Xenova and Hugging Face transformers library split, with xenova in JS (one offs) and HF in PY (batched calls w/ CUDA). We need to explain why we are doing this. As a side note, Xenova IS huggingFace, but not maintained by hugging face, its just the JS version of HF's python library maintained by Xenova
 
 TODO: We need to mention that the rolling file will expand infinity, and should be deleted occasionally.
+
+TODO: We need to remove references to First N vs Last N in training/rolling. Wait a minute... if there is no training data, do we still want to use the rolling files? If yes, do we need to set an upper limit on the first 10k in rolling to represent the training data? That functionality is not in this code at the moment.
+
+TODO: We should probably mention that pythonTrainingEmb.py is a functional duplicate/stripped down version of tkyodrift because it does all the same things but in batches?
+
+TODO: Add a warning about training batch embedding times, and how slow it is without a graphics card.
+
+TODO: We should add some advice that running tkyoDriftSetTraining.py should be done in a dev environment, and then the data should be moved into the production data folder.
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 

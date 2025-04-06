@@ -5,7 +5,7 @@ import Table from 'cli-table3';
 import { MODELS, IO_TYPES, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
 
 // Constants & CLI Args
-const logPath = path.join(OUTPUT_DIR, 'COS_log.csv');
+const logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
 const args = process.argv.slice(2); // e.g., `npx tkyoDrift -3`
 const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]); // default to 1 day
 const driftThreshold = 0.9;

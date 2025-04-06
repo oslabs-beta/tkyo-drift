@@ -10,6 +10,8 @@ import torch
 from datasets import Dataset
 # Allows the use of time functions
 import time
+import json
+from datetime import datetime
 
 import os
 # TODO: This has a chance of failing during write, but will fail silently.
@@ -73,31 +75,60 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         # dataset[i : i + batch_size] slices the dataset to get current batch
         # [io_type_name] selects just the input column
         batch = dataset[i : i + batch_size][io_type_name]
+
         # Convert the batch of texts to embeddings using our embedding function
         emb = embed_data(batch)
+
+        # Compute and log scalar metrics
+        scalar_lines = []
+        for j, vector in enumerate(emb):
+            norm = float(np.linalg.norm(vector))
+            text_length = len(batch[j])
+            scalar_lines.append(json.dumps({
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "metrics": {
+                    "norm": norm,
+                    "textLength": text_length
+                }
+            }) + "\n")
+
+        # Write to .jsonl file (append mode)
+        os.makedirs("data/scalars", exist_ok=True)
+        with open(f"data/scalars/{model_type}.{io_type}.training.scalar.jsonl", "a", encoding="utf-8") as f:
+            f.writelines(scalar_lines)
+
+
         # Add this batch's embeddings
         embeddings.append(emb)
+
         # Print progress every 10 batches
         if i % (batch_size) == 0:
             print(f"Processed {min(i+batch_size, len(dataset))}/{len(dataset)}")
 
     embeddings = np.concatenate(embeddings)
 
-    # Create data directory if it doesn't exist
-    os.makedirs("data", exist_ok=True)
+    # Create data directories if they doesn't exist
+    os.makedirs("data/vectors", exist_ok=True)
+    os.makedirs("data/kmeans", exist_ok=True)
+
     if (len(embeddings) < 10000):
+
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
+
         # Assign the dimensions of each vector
         dims = embeddings.shape[1]
 
         # Create header bytes (8 bytes total)
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
+    
 
         # Write to file (header first, then data)
-        with open(f"data/{model_type}.{io_type}.training.bin", "wb") as f:
+        with open(f"data/vectors/{model_type}.{io_type}.training.bin", "wb") as f:
+
             # Write 8-byte header first
             f.write(header_bytes)
+
             # Then write the data
             embeddings.astype(np.float32).tofile(f)
     else:
@@ -105,16 +136,21 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
         # Assign the number of vectors for the training data
         num_vectors = kMeansEmbedding.shape[0]
+
         # Assign the dimensions of each vector
         dims = kMeansEmbedding.shape[1]
 
         # Create header bytes (8 bytes total)
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
         
+
+
         # Write to file (header first, then data)
-        with open(f"data/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
+        with open(f"data/kmeans/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
+
             # Write 8-byte header first
             f.write(header_bytes)
+
             # Then write the data
             kMeansEmbedding.astype(np.float32).tofile(f)
 
