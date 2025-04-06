@@ -22,6 +22,8 @@ TODO: Add a warning about training batch embedding times, and how slow it is wit
 
 TODO: We should add some advice that running tkyoDriftSetTraining.py should be done in a dev environment, and then the data should be moved into the production data folder.
 
+TODO: The file size warning should be updated to include estimates for the log and scalar files.
+
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 
 TKYO Drift is a lightweight, transparent drift tracking library for AI workflows. It embeds I/O Pairs and compares them to a configurable baseline to detect drift in semantic, conceptual, or lexical meaning over time.

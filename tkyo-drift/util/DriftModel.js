@@ -434,6 +434,9 @@ export class DriftModel {
 
   // * Function to siphon PSI distribution metrics
   captureScalarMetrics(text) {
+    // Skip if training — this method is only for rolling baseline
+    if (this.baselineType === 'training') return;
+
     try {
       // Only capture scalar metrics if the training scalar file exists
       // ? Scalar metrics are only useful if compared against training data.
@@ -473,8 +476,11 @@ export class DriftModel {
   }
 
   async saveScalarMetrics() {
+    // Skip if training — this method is only for rolling baseline
+    if (this.baselineType === 'training') return;
+
     try {
-      // Serialize the metric object as a single JSON line
+      // Make a single JSON line out of the scalar metric
       const line = JSON.stringify(this.scalarMetrics) + '\n';
 
       // Write to file
