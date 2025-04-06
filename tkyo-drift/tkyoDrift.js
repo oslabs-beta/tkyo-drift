@@ -80,7 +80,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
   // Make model holder object, io types, and baselines (don't change these)
   const driftModels = {};
 
-  // ------------- << BEGIN try/catch Error Handling >> -------------
+  //  ------------- << BEGIN try/catch Error Handling >> -------------
   // * Error handling is done within model method calls, which send the error to the catch block.
   try {
     // Validate that the depth counter is both a number and not negative
@@ -127,7 +127,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
       await model.loadModel();
     }
 
-    // ------------- << Get Embeddings >> -------------
+    //  ------------- << Get Embeddings >> -------------
     // * Get embeddings for all inputs and outputs in parallel
     await Promise.all(
       Object.entries(driftModels).map(([key, model]) => {
@@ -137,7 +137,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
       })
     );
 
-    // ------------- << Save Data >> -------------
+    //  ------------- << Save Data >> -------------
     // * Save the embedding to the rolling/training files in parallel
     // ! NOTE: Write ops are done to separate files, this is safe
     // Check if directory exists
@@ -150,7 +150,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
       Object.values(driftModels).map((model) => model.saveToBin())
     );
 
-    // ------------- << Read Bin Files >> -------------
+    //  ------------- << Read Bin Files >> -------------
     // * Read up to N embeddings from binary blobs in parallel
     // ! NOTE: Read ops are non-blocking, this is safe
     // ? See Training Max Size/Rolling Max Size in ReadMe for more info
@@ -159,14 +159,14 @@ export default async function tkyoDrift(input, output, depth = 0) {
       Object.values(driftModels).map((model) => model.readFromBin())
     );
 
-    // ------------- << Get Baseline >> -------------
+    //  ------------- << Get Baseline >> -------------
     // * Calculate Baseline values for each model in serial
     // For each model, calculate the baseline
     for (const model of Object.values(driftModels)) {
       model.getBaseline();
     }
 
-    // ------------- << Get Cosine Similarity >> -------------
+    //  ------------- << Get Cosine Similarity >> -------------
     // * Calculate Cosine Similarity between input and baseline in serial
     const similarityResults = Object.fromEntries(
       Object.entries(driftModels).map(([key, model]) => [
@@ -175,7 +175,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
       ])
     );
 
-    // ------------- << Get Euclidean Distance >> -------------
+    //  ------------- << Get Euclidean Distance >> -------------
     // * Calculate Euclidean Dist. between input and baseline in serial
     const distanceResults = Object.fromEntries(
       Object.entries(driftModels).map(([key, model]) => [
@@ -185,14 +185,14 @@ export default async function tkyoDrift(input, output, depth = 0) {
     );
 
     // console.log(distanceResults);
-    // ------------- << Make & Append Log Entries >> -------------
+    //  ------------- << Make & Append Log Entries >> -------------
     // * Push the results to each log
     // Make shared ID and date for I/O Pair
     const sharedID = v4();
     makeLogEntry(sharedID, similarityResults, 'COS', depth);
     makeLogEntry(sharedID, distanceResults, 'EUC', depth);
 
-  // ------------- << END try/catch Error Handling >> -------------
+  //  ------------- << END try/catch Error Handling >> -------------
   // * Push any errors to the error log 
   // ! NOTE: This platform intentionally fails silently
   } catch (error) {
@@ -207,6 +207,4 @@ export default async function tkyoDrift(input, output, depth = 0) {
 const input =
   'If you had a time machine, but could only go to the past or the future once and never return, which would you choose and why?';
 const output = 'I am sorry, but I do know know how to respond to this request.';
-console.log('Input:', input);
-console.log('Output:', output);
 tkyoDrift(input, output);

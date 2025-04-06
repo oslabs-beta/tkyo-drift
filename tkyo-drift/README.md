@@ -10,6 +10,10 @@ TODO: Changing embedding model names (for example, from 'lexical' to 'bagOfWords
 
 TODO: Explain limitations of the depth counter and why its only a partial solution.
 
+TODO: We are currently using a Xenova and Hugging Face transformers library split, with xenova in JS (one offs) and HF in PY (batched calls w/ CUDA). We need to explain why we are doing this. As a side note, Xenova IS huggingface, but not maintained by hugging face, its just the JS version of HF's python library maintained by Xenova
+
+TODO: We need to mention that the rolling file will expand infinity, and should be deleted occasionally.
+
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 
 TKYO Drift is a lightweight, transparent drift tracking library for AI workflows. It embeds I/O Pairs and compares them to a configurable baseline to detect drift in semantic, conceptual, or lexical meaning over time.

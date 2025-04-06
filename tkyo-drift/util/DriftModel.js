@@ -13,6 +13,7 @@ export class DriftModel {
     this.ioType = ioType;
     this.depth = depth;
     this.filePath = null;
+    this.distance = null;
     this.embedding = null;
     this.byteOffset = null;
     this.dimensions = null;
@@ -257,14 +258,18 @@ export class DriftModel {
             return;
           }
 
-          // TODO: distances here is a set of euclidean distances, but from what to what?
-          // ? If this is the euclidean dist from the HNSW's nearest neighbor to the input vector
-          // ? then should we pass this directly to the log maker function?
           // Destructure from result after parsing the result, changing it from a string to an object
           const { centroids, distances } = JSON.parse(result);
 
-          // Assign the output of the centroids to vectorArray
+          // Assign the centroids to vectorArray
           this.vectorArray = centroids;
+
+          // Assign the average of all distances from centroids to the distance
+          this.distance =
+          Array.isArray(distances) && distances.length > 0
+          // Since distance is null occasionally, we only assign if it isn't
+              ? distances.reduce((sum, val) => sum + val, 0) / distances.length
+              : null;
 
           resolve({ centroids, distances });
         });
@@ -377,7 +382,6 @@ export class DriftModel {
     }
   }
 
-  // TODO: We are already calculating the EUD when making the HNSW, so we should use that if we have it, and if not, calculate it
   // * Function to calculate the euclidean distance from the baseline
   getEuclideanDistance() {
     try {
@@ -396,7 +400,12 @@ export class DriftModel {
         );
       }
 
-      // Calculate the distance between the embedding and baselineArray
+      // If distance was already computed by Python, use it...
+      if (typeof this.distance === 'number') {
+        return this.distance;
+      }
+
+      // ...otherwise, calculate the distance between the embedding and baselineArray
       return Math.sqrt(
         this.embedding.reduce(
           (sum, a, i) => sum + (a - this.baselineArray[i]) ** 2,
