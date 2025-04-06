@@ -6,7 +6,9 @@ TODO: Add section to readme about how to determine the amount of clusters in pyt
 
 TODO: Add a section to readme about embedding max length, tokenization, and silent truncation
 
-TODO: Changine embedding model names (for example, from 'lexical' to 'bagofwords') will brick the log. Warn the people.
+TODO: Changing embedding model names (for example, from 'lexical' to 'bagOfWords') will brick the log. Warn the people.
+
+TODO: Explain limitations of the depth counter and why its only a partial solution.
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 

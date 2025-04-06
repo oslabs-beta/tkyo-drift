@@ -67,9 +67,16 @@ export default function makeLogEntry(id, mathObject, type, depth) {
   const fileExists = fs.existsSync(logPath);
 
   // Write to file
-  if (!fileExists) {
-    fs.writeFileSync(logPath, headers + inputRow + outputRow);
-  } else {
-    fs.appendFileSync(logPath, inputRow + outputRow);
+  try {
+    if (!fileExists) {
+      fs.writeFileSync(logPath, headers + inputRow + outputRow);
+    } else {
+      fs.appendFileSync(logPath, inputRow + outputRow);
+    }
+  } catch(error) {
+    // * Something failed while writing the log
+    // ? Could be disk permissions, file lock, etc.
+    // ! Consider adding a fallback or alert
+    console.error('Failed to write log entry:', error.message);
   }
 }

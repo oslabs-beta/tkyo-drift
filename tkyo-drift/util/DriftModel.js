@@ -41,7 +41,9 @@ export class DriftModel {
         );
       }
     } catch (error) {
-      throw Error(`Error in setFilePath: ${error.message}`);
+      throw new Error(
+        `Error in setFilePath for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
@@ -64,13 +66,22 @@ export class DriftModel {
       );
       MODEL_CACHE[this.modelName] = this.embeddingModel;
     } catch (error) {
-      throw Error(`Error in loadModel: ${error.message}`);
+      throw new Error(
+        `Error in loadModel for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
   // * Function to make an embedding from an input/output pair
   async makeEmbedding(text) {
     try {
+      // Validate I/O text is not null/undefined/empty
+      if (typeof text !== 'string' || text.trim() === '') {
+        throw new Error(
+          'Expected a non-empty string but received invalid input.'
+        );
+      }
+
       // Invoke the load model if it hasn't been done yet
       await this.loadModel();
 
@@ -83,9 +94,18 @@ export class DriftModel {
         pooling: 'mean',
         normalize: normalizeType,
       });
-      // console.log(result.data)
+
       // Save embedding to the object
       this.embedding = result.data;
+
+      // Check if result.data exists and is a numeric array
+      if (
+        !(this.embedding instanceof Float32Array) ||
+        this.embedding.length === 0 ||
+        typeof this.embedding[0] !== 'number'
+      ) {
+        throw new Error('Embedding result is not a valid numeric array.');
+      }
 
       // Save dimensions to object (the actual vector dim is at position 1)
       this.dimensions = this.embedding.length;
@@ -98,12 +118,13 @@ export class DriftModel {
         throw error('Dimension Mismatch');
       }
 
-      if (!this.byteOffset === result.data.byteOffset){
+      if (!this.byteOffset === result.data.byteOffset) {
         throw error('ByteOffset mismatch');
       }
-      
     } catch (error) {
-      throw Error(`Error in makeEmbedding: ${error.message}`);
+      throw new Error(
+        `Error in makeEmbedding for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
@@ -115,6 +136,14 @@ export class DriftModel {
     try {
       // Make a new float 32 array out of the embedding
       const float32Array = new Float32Array(this.embedding);
+
+      // Check to make sure the embedding contains only numbers
+      if (
+        !float32Array.length ||
+        float32Array.some((v) => typeof v !== 'number' || Number.isNaN(v))
+      ) {
+        throw new Error('Invalid embedding: contains non-numeric values.');
+      }
 
       // Buffer the vector
       const embeddingBuffer = Buffer.from(float32Array.buffer);
@@ -182,7 +211,9 @@ export class DriftModel {
         await fileHandle.close();
       }
     } catch (error) {
-      throw Error(`Error in saveToBin: ${error.message}`);
+      throw new Error(
+        `Error in saveToBin for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
@@ -218,7 +249,11 @@ export class DriftModel {
 
         pyProg.on('close', (code) => {
           if (code !== 0) {
-            reject(new Error(`Python process failed: ${error}`));
+            reject(
+              new Error(
+                `Python process failed in readFromBin for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error}`
+              )
+            );
             return;
           }
 
@@ -235,13 +270,25 @@ export class DriftModel {
         });
       });
     } catch (error) {
-      throw Error(`Error in readFromBin: ${error.message}`);
+      throw new Error(
+        `Error in readFromBin for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
   // * Function to get baseline value from vectorArray
   getBaseline() {
     try {
+      // Check to make sure the vectorArray was correctly set in readFromBin
+      if (!Array.isArray(this.vectorArray) || this.vectorArray.length === 0) {
+        throw new Error('Baseline vectorArray is missing or empty.');
+      }
+
+      // Validate the structure of the vector array before attempting to reduce it
+      if (!Array.isArray(this.vectorArray[0])) {
+        throw new Error('Baseline vectorArray is not an array of arrays.');
+      }
+
       // If readFromBin returns a single vector, skip the math and return out.
       if (this.vectorArray.length === 1) {
         this.baselineArray = new Float32Array(this.vectorArray[0]);
@@ -271,21 +318,34 @@ export class DriftModel {
         );
       }
     } catch (error) {
-      throw Error(`Error in getBaseline: ${error.message}`);
+      throw new Error(
+        `Error in getBaseline for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
     try {
+      // Validate the embedding and baselines both exist
+      if (
+        !(this.embedding instanceof Float32Array) ||
+        !(this.baselineArray instanceof Float32Array)
+      ) {
+        throw new Error('Missing embedding or baseline for cosine similarity.');
+      }
+
+      // Validate that both the baseline and embedding lengths match
+      if (this.embedding.length !== this.baselineArray.length) {
+        throw new Error(
+          `Embedding and baseline length mismatch: ${this.embedding.length} vs ${this.baselineArray.length}`
+        );
+      }
+
       // Calculate the dot product of the A and B arrays
       let dotProduct = 0;
       for (let i = 0; i < this.dimensions; i++) {
         dotProduct += this.embedding[i] * this.baselineArray[i];
-        // commenting this out because I am having some trouble identifying whether or not dotProduct is an actual number. NaN is still classified as number, and we can't successfully check if dotProduct is strictly equal to NaN to throw an error at that point.
-        // if (dotProduct === NaN){
-        //   console.log("NaN")
-        // }
       }
 
       // Calculate the magnitude of A
@@ -298,10 +358,22 @@ export class DriftModel {
         this.baselineArray.reduce((sum, b) => sum + b * b, 0)
       );
 
-      // return the cosine similarity between A and B, clamping the results to prevent rounding errors
-      return Math.min(1, dotProduct / (magnitudeA * magnitudeB));
+      // Calculate the denominator
+      const denominator = magnitudeA * magnitudeB;
+
+      // Validate that the denominator is not 0
+      if (denominator === 0) {
+        throw new Error(
+          'Zero magnitude detected in cosine similarity calculation.'
+        );
+      }
+
+      // Return the cosine similarity between A and B, clamping the results to prevent rounding errors
+      return Math.min(1, dotProduct / denominator);
     } catch (error) {
-      throw Error(`Error in getCosineSimilarity: ${error.message}`);
+      throw new Error(
+        `Error in getCosineSimilarity for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
@@ -309,6 +381,21 @@ export class DriftModel {
   // * Function to calculate the euclidean distance from the baseline
   getEuclideanDistance() {
     try {
+      // Validate that the embedding and baselines exist
+      if (
+        !(this.embedding instanceof Float32Array) ||
+        !(this.baselineArray instanceof Float32Array)
+      ) {
+        throw new Error('Missing embedding or baseline.');
+      }
+
+      // Validate that the embedding and baselines are the same length
+      if (this.embedding.length !== this.baselineArray.length) {
+        throw new Error(
+          `Embedding and baseline length mismatch: ${this.embedding.length} vs ${this.baselineArray.length}`
+        );
+      }
+
       // Calculate the distance between the embedding and baselineArray
       return Math.sqrt(
         this.embedding.reduce(
@@ -317,7 +404,9 @@ export class DriftModel {
         )
       );
     } catch (error) {
-      throw Error(`Error in getEuclideanDistance: ${error.message}`);
+      throw new Error(
+        `Error in getEuclideanDistance for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 }

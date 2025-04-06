@@ -1,3 +1,6 @@
+# Prevent _pycache_ creation, since these scripts only run on demand
+import sys
+sys.dont_write_bytecode = True
 # Import helper function to load and embed the data
 from util import pythonTrainingEmb
 

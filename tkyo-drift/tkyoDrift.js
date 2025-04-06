@@ -44,8 +44,9 @@
 import fs from 'fs';
 import path from 'path';
 import { v4 } from 'uuid';
-import makeLogEntry from './util/makeLogEntry.js';
 import { DriftModel } from './util/DriftModel.js';
+import makeLogEntry from './util/makeLogEntry.js';
+import makeErrorLogEntry from './util/makeErrorLogEntry.js';
 
 // * Global Variables for the utilities
 //  Models to embed the I/O Data
@@ -67,29 +68,50 @@ export default async function tkyoDrift(input, output, depth = 0) {
   // Stopwatch START 🏎️
   console.time('Drift Analyzer Full Run');
 
+  // Validate model config (we need the / and it's gotta be a string)
+  for (const [type, name] of Object.entries(MODELS)) {
+    if (typeof name !== 'string' || !name.includes('/')) {
+      throw new Error(
+        `Invalid or missing model ID for "${type}" model: "${name}"`
+      );
+    }
+  }
+
   // Make model holder object, io types, and baselines (don't change these)
   const driftModels = {};
 
   // ------------- << BEGIN try/catch Error Handling >> -------------
   // * Error handling is done within model method calls, which send the error to the catch block.
   try {
-    //  ------------- << Construct Model Combinations >> -------------
-    // * For each model, for each ioType, for each baselineType,
-    // make a model and assign to driftModels object
-    for (const [modelType, modelName] of Object.entries(MODELS)) {
-      for (const ioType of IO_TYPES) {
-        for (const baselineType of BASELINE_TYPES) {
-          const key = `${modelType}.${ioType}.${baselineType}`;
-          driftModels[key] = new DriftModel(
-            modelType,
-            modelName,
-            ioType,
-            baselineType
-          );
-        }
-      }
+    // Validate that the depth counter is both a number and not negative
+    if (!Number.isInteger(depth) || depth < 0) {
+      throw new Error(
+        `Invalid depth value: must be a non-negative integer. Got: ${depth}`
+      );
     }
 
+    //  ------------- << Construct Model Combinations >> -------------
+    try {
+      // * For each model, for each ioType, for each baselineType,
+      // make a model and assign to driftModels object
+      for (const [modelType, modelName] of Object.entries(MODELS)) {
+        for (const ioType of IO_TYPES) {
+          for (const baselineType of BASELINE_TYPES) {
+            const key = `${modelType}.${ioType}.${baselineType}`;
+            driftModels[key] = new DriftModel(
+              modelType,
+              modelName,
+              ioType,
+              baselineType
+            );
+          }
+        }
+      }
+    } catch (error) {
+      throw new Error(
+        `Error while constructing DriftModel objects: ${error.message}`
+      );
+    }
     //  ------------- << Initialize Model File Pathing >> -------------
     // * For each model, invoke set file path method
     // ! NOTE: If training data is not supplied, it will use the rolling file's path
@@ -164,18 +186,17 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
     // console.log(distanceResults);
     // ------------- << Make & Append Log Entries >> -------------
-    // * Push the results to the log
+    // * Push the results to each log
     // Make shared ID and date for I/O Pair
     const sharedID = v4();
     makeLogEntry(sharedID, similarityResults, 'COS', depth);
     makeLogEntry(sharedID, distanceResults, 'EUC', depth);
 
-    // ------------- << END try/catch Error Handling >> -------------
-    // TODO: This needs to write to the error log
+  // ------------- << END try/catch Error Handling >> -------------
+  // * Push any errors to the error log 
+  // ! NOTE: This platform intentionally fails silently
   } catch (error) {
-    console.log('NEW ERROR: ', error);
-    // let errorID = v4()
-    // makeErrorLogEntry(errorID, error)
+    makeErrorLogEntry(error);
   }
 
   // Stopwatch END 🏁 (Comment this out in production)
@@ -186,6 +207,6 @@ export default async function tkyoDrift(input, output, depth = 0) {
 const input =
   'If you had a time machine, but could only go to the past or the future once and never return, which would you choose and why?';
 const output = 'I am sorry, but I do know know how to respond to this request.';
-// console.log('Input:', input);
-// console.log('Output:', output);
+console.log('Input:', input);
+console.log('Output:', output);
 tkyoDrift(input, output);

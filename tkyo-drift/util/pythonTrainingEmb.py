@@ -1,3 +1,6 @@
+# Prevent _pycache_ creation, since these scripts only run on demand
+import sys
+sys.dont_write_bytecode = True
 # Import helper function to create kmeans of data
 from util import pythonKMeans
 # This is good for vectors/matrices

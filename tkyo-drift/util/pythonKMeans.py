@@ -1,9 +1,10 @@
+# Prevent _pycache_ creation, since these scripts only run on demand
+import sys
+sys.dont_write_bytecode = True
 # This is good for vectors/matrices
 import numpy as np
-
 # This is the kmeans package
 from sklearn.cluster import KMeans
-
 # Allows the use of time functions
 import time
 
