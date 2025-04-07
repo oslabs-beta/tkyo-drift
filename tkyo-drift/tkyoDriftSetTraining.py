@@ -41,7 +41,9 @@ def tkyoDriftSetTraining(data_set_Path, input_name="input", output_name="output"
     return
 
 # TODO Remove hardcoded path, input name, & output name
-DATASET_PATH = "./data/small_thoughts-train.arrow"
+DATASET_PATH = "./data"
 input_name = "problem"
 output_name = "solution"
+# input_name = "['conversations'][0]['value']" 
+# output_name = "['conversations'][1]['value']"
 tkyoDriftSetTraining(DATASET_PATH, input_name, output_name)

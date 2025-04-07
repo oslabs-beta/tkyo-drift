@@ -7,7 +7,7 @@ from util import pythonKMeans
 import numpy as np
 from transformers import AutoModel, AutoTokenizer
 import torch
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
 # Allows the use of time functions
 import time
 import json
@@ -35,8 +35,19 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Check if dataset exist
     if data_path:
-        print(f"Loading dataset from local cache: {data_path}")
-        dataset = Dataset.from_file(data_path)
+        print(f"Loading all .arrow files from: {data_path}")
+        
+        arrow_files = [
+            os.path.join(data_path, f)
+            for f in os.listdir(data_path)
+            if f.endswith(".arrow")
+        ]
+
+        if not arrow_files:
+            raise ValueError("No .arrow files found in the provided directory.")
+
+        dataset_parts = [Dataset.from_file(fp) for fp in sorted(arrow_files)]
+        dataset = concatenate_datasets(dataset_parts)
     else:
         raise ValueError(print("Could Not Retrieve Dataset"))
 
@@ -74,21 +85,56 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         # Get a batch of input texts:
         # dataset[i : i + batch_size] slices the dataset to get current batch
         # [io_type_name] selects just the input column
-        batch = dataset[i : i + batch_size][io_type_name]
+        batch_raw = dataset[i : i + batch_size]
+
+        # Use helper to resolve column names 
+        batch = resolve_io_column(batch_raw, io_type_name)
+
 
         # Convert the batch of texts to embeddings using our embedding function
         emb = embed_data(batch)
 
-        # Compute and log scalar metrics
+        # Compute and log scalar metrics for each item in batch
         scalar_lines = []
         for j, vector in enumerate(emb):
+            text = batch[j]
+
+            # Norm of the vector
             norm = float(np.linalg.norm(vector))
-            text_length = len(batch[j])
+
+            # Raw text length
+            text_length = len(text)
+
+            # Token length (use tokenizer to match JS side)
+            token_length = len(tokenizer.encode(text))
+
+            # Character-level entropy
+            counts = {}
+            for c in text:
+                counts[c] = counts.get(c, 0) + 1
+            entropy = -sum((count / len(text)) * np.log2(count / len(text)) for count in counts.values())
+
+            # Average word length
+            words = text.split()
+            avg_word_length = sum(len(word) for word in words) / len(words) if words else 0
+
+            # Punctuation density
+            punctuation_density = sum(1 for c in text if c in '.,!?;:') / len(text) if len(text) > 0 else 0
+
+            # Uppercase ratio
+            uppercase_ratio = sum(1 for c in text if c.isupper()) / len(text) if len(text) > 0 else 0
+
+            # Store as JSONL
             scalar_lines.append(json.dumps({
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "metrics": {
                     "norm": norm,
-                    "textLength": text_length
+                    "textLength": text_length,
+                    "tokenLength": token_length,
+                    "entropy": entropy,
+                    "avgWordLength": avg_word_length,
+                    "punctuationDensity": punctuation_density,
+                    "uppercaseRatio": uppercase_ratio
                 }
             }) + "\n")
 
@@ -159,3 +205,15 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     print(f"Elapsed: {endTotal - startTotal:.6f} seconds")
 
     return
+
+def resolve_io_column(batch, io_type_name):
+    try:
+        if hasattr(batch, "column_names") and io_type_name in batch.column_names:
+            return batch[io_type_name]
+
+        # Handle batch = dict of lists (Hugging Face batch)
+        sample = list(batch.values())[0][0]
+
+        return [eval(f"row{io_type_name}", {"row": {k: v[i] for k, v in batch.items()}}) for i in range(len(next(iter(batch.values()))))]
+    except Exception as e:
+        raise ValueError(f"Could not extract '{io_type_name}' from dataset: {e}")

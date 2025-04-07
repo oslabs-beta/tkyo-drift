@@ -16,13 +16,26 @@ TODO: We need to mention that the rolling file will expand infinity, and should 
 
 TODO: We need to remove references to First N vs Last N in training/rolling. Wait a minute... if there is no training data, do we still want to use the rolling files? If yes, do we need to set an upper limit on the first 10k in rolling to represent the training data? That functionality is not in this code at the moment.
 
-TODO: We should probably mention that pythonTrainingEmb.py is a functional duplicate/stripped down version of tkyodrift because it does all the same things but in batches?
+TODO: We should probably mention that pythonTrainingEmb.py is a functional duplicate/stripped down version of tkyoDrift because it does all the same things but in batches?
 
 TODO: Add a warning about training batch embedding times, and how slow it is without a graphics card.
 
 TODO: We should add some advice that running tkyoDriftSetTraining.py should be done in a dev environment, and then the data should be moved into the production data folder.
 
 TODO: The file size warning should be updated to include estimates for the log and scalar files.
+
+TODO: We need a dictionary of what each metric displays: Cosine Similarity ranges, EUC distances & norm drift (same thing, but compared diff), textLength drift
+
+| Metric               | Description                                                   |
+|----------------------|---------------------------------------------------------------|
+| `norm`               | Vector magnitude (captures changes in embedding length/energy)|
+| `textLength`         | Raw character count of the input/output text                  |
+| `tokenLength`        | Number of tokens (based on model tokenizer)                   |
+| `entropy`            | Character-level entropy (measures information density)        |
+| `avgWordLength`      | Average word length (indicates language complexity)           |
+| `punctuationDensity`| Ratio of punctuation to characters (captures tone/stylistics) |
+| `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)     |
+
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 

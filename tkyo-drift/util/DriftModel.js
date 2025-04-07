@@ -439,7 +439,7 @@ export class DriftModel {
 
     try {
       // Only capture scalar metrics if the training scalar file exists
-      // ? Scalar metrics are only useful if compared against training data.
+      // ? Scalar metrics are only useful when comparing rolling to training data
       const trainingScalarPath = path.join(
         OUTPUT_DIR,
         'scalars',
@@ -451,14 +451,35 @@ export class DriftModel {
         return;
       }
 
-      // Get L2 Norm value
+      // * Get L2 Norm value
       const norm = Math.sqrt(
         this.embedding.reduce((sum, val) => sum + val * val, 0)
       );
 
-      // Get Raw Input Length
-      // TODO: DO we want to use a tokenizer for token length instead of raw input length?
+      // * Get Raw Input Length
+      // ? Functionally a duplicate from token length, but token length maxes at the embedder token max (512 typically)
       const textLength = text.length;
+
+      // * Get Token Length
+      const tokenLength = this.embeddingModel.tokenizer.encode(text).length;
+
+      // * Get Character Entropy
+      const counts = {};
+      for (const char of text) counts[char] = (counts[char] || 0) + 1;
+      const entropy = -Object.values(counts).reduce((sum, count) => {
+        const p = count / text.length;
+        return sum + p * Math.log2(p);
+      }, 0);
+
+      // * Get Average Word Length
+      const avgWordLength = text.split(/\s+/).reduce((sum, word) => sum + word.length, 0) / (text.split(/\s+/).length || 1);
+
+      // * Get Punctuation Density
+      const punctuationDensity = (text.match(/[.,!?;]/g)?.length || 0) / text.length;
+
+      // * Get Uppercase Ratio
+      const uppercaseRatio = (text.match(/[A-Z]/g)?.length || 0) / text.length;
+
 
       // Store the metrics
       this.scalarMetrics = {
@@ -466,6 +487,11 @@ export class DriftModel {
         metrics: {
           norm,
           textLength,
+          tokenLength,
+          entropy,
+          avgWordLength,
+          punctuationDensity,
+          uppercaseRatio,
         },
       };
     } catch (error) {
