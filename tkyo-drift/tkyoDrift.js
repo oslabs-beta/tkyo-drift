@@ -210,7 +210,6 @@ export default async function tkyoDrift(input, output, depth = 0) {
       ])
     );
 
-    // console.log(distanceResults);
     //  ------------- << Make & Append Log Entries >> -------------
     // * Push the results to each log
     // Make shared ID and date for I/O Pair
