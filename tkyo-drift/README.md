@@ -36,6 +36,7 @@ TODO: We need a dictionary of what each metric displays: Cosine Similarity range
 | `punctuationDensity`| Ratio of punctuation to characters (captures tone/stylistics) |
 | `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)     |
 
+TODO: In order to run the python hook, they need to spawn a child process to send in our training data. Tell the people
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 
