@@ -9,14 +9,23 @@ import { compareScalarDistributions } from './compareScalarDistributions.js';
 // Create an object to hold the drift results, grouped by each metric name
 const driftByMetric = {};
 
+// -------------<< Collection Phase >> -------------
 // Loop through every input/output type
 for (const ioType of IO_TYPES) {
   // Loop through every model type (semantic, lexical, concept, etc.)
   for (const [modelType] of Object.entries(MODELS)) {
     // Build the base file name for scalar logs
     const baseName = `${modelType}.${ioType}`;
-    const trainingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.training.scalar.jsonl`);
-    const rollingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.rolling.scalar.jsonl`);
+    const trainingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.training.scalar.jsonl`
+    );
+    const rollingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.rolling.scalar.jsonl`
+    );
 
     // Skip this model/io combination if either file doesn't exist
     if (!fs.existsSync(trainingPath) || !fs.existsSync(rollingPath)) continue;
@@ -41,26 +50,50 @@ for (const ioType of IO_TYPES) {
   }
 }
 
+// ! Band aid fix: All values for all models are the same, except for norm.
+// ? So we should not be displaying the scalar metrics for each model combo UNLESS its the norm value
+// ------------------<< Build Tables Phase >> -----------------
 // Loop over each unique scalar metric (e.g., norm, entropy, etc.)
 for (const [metric, rows] of Object.entries(driftByMetric)) {
+  const isNorm = metric === 'norm';
   // Create a new table for this metric
   const table = new Table({
-    head: [
-      chalk.bold.white('I/O Type'),
-      chalk.bold.white('Drift Type'),
-      chalk.bold.white(`Mean Delta`),
-      chalk.bold.white(`Std Delta`),
-    ],
+    head: isNorm
+      ? [
+          chalk.bold.white('I/O Type'),
+          chalk.bold.white('Drift Type'),
+          chalk.bold.white('Mean Delta'),
+          chalk.bold.white('Std Delta'),
+        ]
+      : [
+          chalk.bold.white('I/O Type'),
+          chalk.bold.white('Mean Delta'),
+          chalk.bold.white('Std Delta'),
+        ],
   });
+
+  const seenIO = new Set();
 
   // Add one row per model/io combo to the table
   for (const row of rows) {
-    table.push([
-      row.ioType.toUpperCase(),
-      row.modelType.toUpperCase(),
-      formatDelta(row.meanDelta),
-      formatDelta(row.stdDelta),
-    ]);
+    const ioKey = row.ioType;
+
+    if (!isNorm) {
+      if (seenIO.has(ioKey)) continue;
+      seenIO.add(ioKey);
+      table.push([
+        row.ioType.toUpperCase(),
+        formatDelta(row.meanDelta),
+        formatDelta(row.stdDelta),
+      ]);
+    } else {
+      table.push([
+        row.ioType.toUpperCase(),
+        row.modelType.toUpperCase(),
+        formatDelta(row.meanDelta),
+        formatDelta(row.stdDelta),
+      ]);
+    }
   }
 
   // Generate a fancy boxed title for this section
@@ -85,6 +118,7 @@ function formatDelta(val) {
   return chalk.red(formatted);
 }
 
+// ------------<< Element Count Phase >>-----------------
 // Count how many unique samples we are comparing (normalized)
 let trainingCount = 0;
 let rollingCount = 0;
@@ -95,17 +129,31 @@ let rollingCombos = 0;
 for (const ioType of IO_TYPES) {
   for (const [modelType] of Object.entries(MODELS)) {
     const baseName = `${modelType}.${ioType}`;
-    const trainingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.training.scalar.jsonl`);
-    const rollingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.rolling.scalar.jsonl`);
+    const trainingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.training.scalar.jsonl`
+    );
+    const rollingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.rolling.scalar.jsonl`
+    );
 
     if (fs.existsSync(trainingPath)) {
-      const lines = fs.readFileSync(trainingPath, 'utf-8').split('\n').filter(Boolean);
+      const lines = fs
+        .readFileSync(trainingPath, 'utf-8')
+        .split('\n')
+        .filter(Boolean);
       trainingCount += lines.length;
       trainingCombos++;
     }
 
     if (fs.existsSync(rollingPath)) {
-      const lines = fs.readFileSync(rollingPath, 'utf-8').split('\n').filter(Boolean);
+      const lines = fs
+        .readFileSync(rollingPath, 'utf-8')
+        .split('\n')
+        .filter(Boolean);
       rollingCount += lines.length;
       rollingCombos++;
     }
@@ -113,8 +161,12 @@ for (const ioType of IO_TYPES) {
 }
 
 // Normalize the totals by dividing by number of model/io combinations
-const adjustedTrainingCount = trainingCombos ? Math.floor(trainingCount / trainingCombos) : 0;
-const adjustedRollingCount = rollingCombos ? Math.floor(rollingCount / rollingCombos) : 0;
+const adjustedTrainingCount = trainingCombos
+  ? Math.floor(trainingCount / trainingCombos)
+  : 0;
+const adjustedRollingCount = rollingCombos
+  ? Math.floor(rollingCount / rollingCombos)
+  : 0;
 const footer = `Samples — Training: ${adjustedTrainingCount.toLocaleString()}   |   Rolling: ${adjustedRollingCount.toLocaleString()}`;
 
 // Display total sample counts for transparency
