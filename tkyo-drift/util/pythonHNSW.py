@@ -46,6 +46,8 @@ def HNSW(io_type, model_type, query, baseline_type):
             # Check to make sure this is not the first write AND remove the new entry for the rolling dataset
             if baseline_type == 'rolling' and num_vectors != 1:
                 data = data[:-1]
+            #keep only the most recent 1,000 entries when we are reading from rolling.
+                data = data[-1000:]
                 
             # Returns the vectors from the binary file
             return data.reshape(num_vectors, dims), num_vectors, dims
