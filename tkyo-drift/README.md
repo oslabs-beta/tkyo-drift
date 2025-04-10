@@ -1,3 +1,6 @@
+
+TODO: We should mention that the rolling is using a fixed number, but a switch use use date filtering would be a good iteration project, though it would require modifying the binary storage to include a date alone with every vector.
+
 TODO: Add an explanation for why the first value will never show drift
 
 TODO: Add an install section

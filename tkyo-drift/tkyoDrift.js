@@ -230,6 +230,6 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
 // TODO: Remove hardcoded input/output values
 const input =
-  'If you had a time machine, but could only go to the past or the future once and never return, which would you choose and why?';
+  'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
 const output = 'I am sorry, but I do know know how to respond to this request.';
 tkyoDrift(input, output);

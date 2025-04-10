@@ -231,7 +231,7 @@ export class DriftModel {
     }
   }
 
-  // * Function to read the contents of the Bins, Build an HNSW, and then get the
+  // * Function to read the contents of the Bins, Build an HNSW
   async readFromBin() {
     try {
       return new Promise((resolve, reject) => {
@@ -256,7 +256,6 @@ export class DriftModel {
         // This function is for error handling
         // Data is the binary from of the error from python
         pyProg.stderr.on('data', (data) => {
-          console.error('[PYTHON STDERR]', data.toString()); // ! This is for testing, remove later
           // Error is the stringified version of the error from python
           error += data.toString();
         });
@@ -279,9 +278,9 @@ export class DriftModel {
 
           // Assign the average of all distances from centroids to the distance
           this.distance =
+            // Since distance is null occasionally, we only assign if it isn't
             Array.isArray(distances) && distances.length > 0
-              ? // Since distance is null occasionally, we only assign if it isn't
-                distances.reduce((sum, val) => sum + val, 0) / distances.length
+              ? distances.reduce((sum, val) => sum + val, 0) / distances.length
               : null;
 
           resolve({ centroids, distances });
@@ -472,14 +471,16 @@ export class DriftModel {
       }, 0);
 
       // * Get Average Word Length
-      const avgWordLength = text.split(/\s+/).reduce((sum, word) => sum + word.length, 0) / (text.split(/\s+/).length || 1);
+      const avgWordLength =
+        text.split(/\s+/).reduce((sum, word) => sum + word.length, 0) /
+        (text.split(/\s+/).length || 1);
 
       // * Get Punctuation Density
-      const punctuationDensity = (text.match(/[.,!?;]/g)?.length || 0) / text.length;
+      const punctuationDensity =
+        (text.match(/[.,!?;]/g)?.length || 0) / text.length;
 
       // * Get Uppercase Ratio
       const uppercaseRatio = (text.match(/[A-Z]/g)?.length || 0) / text.length;
-
 
       // Store the metrics
       this.scalarMetrics = {

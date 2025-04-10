@@ -214,6 +214,9 @@ def resolve_io_column(batch, io_type_name):
         # Handle batch = dict of lists (Hugging Face batch)
         sample = list(batch.values())[0][0]
 
-        return [eval(f"row{io_type_name}", {"row": {k: v[i] for k, v in batch.items()}}) for i in range(len(next(iter(batch.values()))))]
+        return [row[io_type_name] for row in [
+    {k: v[i] for k, v in batch.items()} for i in range(len(next(iter(batch.values()))))
+]]
+
     except Exception as e:
         raise ValueError(f"Could not extract '{io_type_name}' from dataset: {e}")
