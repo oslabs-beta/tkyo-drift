@@ -1,0 +1,91 @@
+TABLE: people
+_id (BIGINT, PRIMARY KEY)
+name (VARCHAR)
+mass (VARCHAR)
+hair_color (VARCHAR)
+skin_color (VARCHAR)
+eye_color (VARCHAR)
+gender (VARCHAR)
+birth_year (VARCHAR)
+species_id (BIGINT, FOREIGN KEY -> species._id)
+homeworld_id (BIGINT, FOREIGN KEY -> planets._id)
+height (INTEGER)
+
+TABLE: species
+_id (BIGINT, PRIMARY KEY)
+name (VARCHAR)
+classification (VARCHAR)
+average_height (VARCHAR)
+average_lifespan (VARCHAR)
+hair_colors (VARCHAR)
+skin_colors (VARCHAR)
+eye_colors (VARCHAR)
+language (VARCHAR)
+homeworld_id (BIGINT, FOREIGN KEY -> planets._id)
+
+TABLE: planets
+_id (BIGINT, PRIMARY KEY)
+name (VARCHAR)
+rotation_period (INTEGER)
+orbital_period (INTEGER)
+diameter (INTEGER)
+climate (VARCHAR)
+gravity (VARCHAR)
+terrain (VARCHAR)
+surface_water (VARCHAR)
+population (BIGINT)
+
+TABLE: films
+_id (BIGINT, PRIMARY KEY)
+title (VARCHAR)
+episode_id (INTEGER)
+opening_crawl (VARCHAR)
+director (VARCHAR)
+producer (VARCHAR)
+release_date (DATE)
+
+TABLE: people_in_films
+_id (BIGINT, PRIMARY KEY)
+person_id (BIGINT, FOREIGN KEY -> people._id)
+film_id (BIGINT, FOREIGN KEY -> films._id)
+
+TABLE: species_in_films
+_id (BIGINT, PRIMARY KEY)
+species_id (BIGINT, FOREIGN KEY -> species._id)
+film_id (BIGINT, FOREIGN KEY -> films._id)
+
+TABLE: planets_in_films
+_id (BIGINT, PRIMARY KEY)
+planet_id (BIGINT, FOREIGN KEY -> planets._id)
+film_id (BIGINT, FOREIGN KEY -> films._id)
+
+TABLE: vessels
+_id (BIGINT, PRIMARY KEY)
+name (VARCHAR)
+manufacturer (VARCHAR)
+model (VARCHAR)
+vessel_type (VARCHAR)
+vessel_class (VARCHAR)
+cost_in_credits (BIGINT)
+length (VARCHAR)
+max_atmosphering_speed (VARCHAR)
+crew (INTEGER)
+passengers (INTEGER)
+cargo_capacity (VARCHAR)
+consumables (VARCHAR)
+
+TABLE: vessels_in_films
+_id (BIGINT, PRIMARY KEY)
+vessel_id (BIGINT, FOREIGN KEY -> vessels._id)
+film_id (BIGINT, FOREIGN KEY -> films._id)
+
+TABLE: pilots
+_id (BIGINT, PRIMARY KEY)
+person_id (BIGINT, FOREIGN KEY -> people._id)
+vessel_id (BIGINT, FOREIGN KEY -> vessels._id)
+
+TABLE: starship_specs
+_id (BIGINT, PRIMARY KEY)
+vessel_id (BIGINT, FOREIGN KEY -> vessels._id)
+hyperdrive_rating (VARCHAR)
+MGLT (VARCHAR)

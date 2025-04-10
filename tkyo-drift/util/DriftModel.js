@@ -94,7 +94,7 @@ export class DriftModel {
     //TODO: This may not exist in the return
 
     // if we throw an error here, it should halt the rest of the code
-    //our check will throw the error if we do not have a match on embedding.length and dims. Given that those are the same, we're being efficient by checking that the two values exist and that they're equal. For some reason, checking if this.byteOffset exists is returning false (e.g. if(this.byteOffset)), despite consistently console logging as "0". Given the todo above, I think we can leave byteOffset out.
+    // our check will throw the error if we do not have a match on embedding.length and dims. Given that those are the same, we're being efficient by checking that the two values exist and that they're equal. For some reason, checking if this.byteOffset exists is returning false (e.g. if(this.byteOffset)), despite consistently console logging as "0". Given the todo above, I think we can leave byteOffset out.
     // console.log(this.embedding, this.dimensions, this.byteOffset)
     if (!((this.embedding.length === this.dimensions) && this.embedding)) {
       // console.log(this.byteOffset)

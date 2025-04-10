@@ -1,0 +1,19 @@
+# General
+.DS_Store
+
+# dependencies
+node_modules/
+
+# environment variables
+.env
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# output from webpack
+dist/
+
+# jest coverage
+coverage/

@@ -1,0 +1,9 @@
+Promp 1:
+The message is a short hologram showing a woman with black hair and brown eyes.
+-Q: What planet is she from?
+-A:
+
+Prompt 2:
+She tells us that the trail definitely starts with droid with red eyes that is from her planet.
+-Q: What is the name of that droid?
+-A:

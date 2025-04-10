@@ -1,0 +1,155 @@
+/* General Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Dark Mode Background */
+body {
+  text-align: center;
+  background-color: #0a0e17;
+  color: #d3e7ff;
+  line-height: 1.6;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* Container Styles */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #202833;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #111722, #0c1017);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  color: #a8d0e6;
+}
+
+/* Form Styles */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+textarea {
+  background-color: #121826;
+  color: #c7d4ed;
+  border: none;
+  border-radius: 5px;
+  padding: 15px;
+  font-size: 1rem;
+  resize: vertical;
+  outline: none;
+}
+
+textarea::placeholder {
+  color: #707b94;
+}
+
+button {
+  background-color: #1c2d50;
+  color: #d9edf7;
+  border: none;
+  padding: 12px 20px;
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: transform 0.2s;
+}
+
+button:hover {
+  background-color: #243b5e;
+  transform: translateY(-2px);
+}
+
+button:disabled {
+  background-color: #1a263e;
+  cursor: not-allowed;
+}
+
+/* Error Message */
+.error {
+  color: #ff4d4f;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+/* Result Section */
+.result {
+  margin-top: 30px;
+  padding: 15px;
+  background-color: #111722;
+  border-left: 5px solid #246aff;
+  border-radius: 5px;
+}
+
+.result h2 {
+  color: #63a4ff;
+}
+
+pre {
+  background-color: #0d141d;
+  color: #c7d4ed;
+  padding: 10px;
+  border-radius: 5px;
+  overflow-x: auto;
+}
+
+/* Table Styles */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background-color: #10151d;
+  color: #a8d0e6;
+  border: 1px solid #1f2c3e;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+th,
+td {
+  padding: 12px 15px;
+  text-align: left;
+  border: 1px solid #1f2c3e;
+}
+
+th {
+  background-color: #1b2838;
+  color: #d3e7ff;
+}
+
+td {
+  background-color: #111722;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  form {
+    gap: 15px;
+  }
+
+  textarea {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+
+  button {
+    font-size: 0.9rem;
+    padding: 10px 15px;
+  }
+
+  th,
+  td {
+    padding: 10px 12px;
+  }
+}
