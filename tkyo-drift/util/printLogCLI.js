@@ -4,45 +4,51 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { MODELS, IO_TYPES, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
 
-// Constants & CLI Args;
-const logPath = path.join(OUTPUT_DIR, 'drift_log.csv');
-console.log(`Log Path: ${logPath}`);
-const args = process.argv.slice(2);
-const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]);
-const driftThreshold = 0.9;
-const startTime = Date.now() - days * 86400000;
+// TODO: Violation counts appear to be double their intended value, find out why
 
-// Guard: Check File Exists
+// Constants & CLI Args
+const logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
+const args = process.argv.slice(2); // e.g., `npx tkyoDrift -3`
+const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]); // default to 1 day
+const driftThreshold = 0.9;
+const startTime = Date.now() - days * 86400000; // milliseconds in a day
+
+// Validate that the log file actually exists
 if (!fs.existsSync(logPath)) {
-  console.error(`No log file not found at: ${logPath}`);
-  process.exit(1);
+  throw new Error(`No log file not found at: ${logPath}`);
 }
 
-// Parse CSV
-const [headerLine, ...dataLines] = fs
-  .readFileSync(logPath, 'utf-8')
-  .trim()
-  .split('\n');
-const headers = headerLine.split(',');
-const rows = dataLines.map((line) => line.split(','));
+// Declare header and row variables so they’re accessible later
+let headers, rows;
 
-// Identify cosine similarity columns dynamically
+try {
+  // Parse the CSV file into header + rows
+  const [headerLine, ...dataLines] = fs
+    .readFileSync(logPath, 'utf-8')
+    .trim()
+    .split('\n');
+  headers = headerLine.split(',');
+  rows = dataLines.map((line) => line.split(','));
+} catch (error) {
+  throw new Error(`Failed to parse log file: ${error.message}`);
+}
+
+// Dynamically find all columns that are COS values
 const COS_COLUMNS = headers.filter((h) => h.endsWith('COS'));
 
-// Filter rows by timestamp
+// Filter rows by timestamp so we only show recent results
 const filteredRows = rows.filter((row) => {
   const timestamp = new Date(row[2]).getTime(); // index 2 = TIMESTAMP
   return timestamp >= startTime;
 });
 
-// Aggregation Maps
+// Create empty maps to store cumulative similarity values
 const columnSums = {};
 const rowCounts = {};
-// let totalViolations = 0;
 
-// Sum up values for averaging
+// Loop through all filtered rows to aggregate cosine similarity by type
 for (const row of filteredRows) {
-  const ioType = row[3];
+  const ioType = row[3]; // the I/O column
 
   for (const col of COS_COLUMNS) {
     const key = `${ioType}|${col}`;
@@ -56,14 +62,14 @@ for (const row of filteredRows) {
   }
 }
 
-// Helpers
+// Helper: Color-code average similarity values
 const colorizeSimilarity = (val) => {
   if (val >= 0.9) return chalk.green(val.toFixed(2));
   if (val >= 0.77) return chalk.yellow(val.toFixed(2));
   return chalk.red(val.toFixed(2));
 };
 
-// Table Setup
+// Setup the output table
 const table = new Table({
   head: [
     chalk.bold.white('I/O Type'),
@@ -74,7 +80,7 @@ const table = new Table({
   ],
 });
 
-// Build Table Rows
+// Build the table rows by model type, io type, and baseline type
 for (const ioType of IO_TYPES) {
   for (const [modelType] of Object.entries(MODELS)) {
     for (const baselineType of BASELINE_TYPES) {
@@ -86,24 +92,30 @@ for (const ioType of IO_TYPES) {
       const sum = columnSums[key];
       const count = rowCounts[key];
 
+      // Skip if there's no data for this combo
       if (!sum || !count) continue;
 
-      const avg = sum / count;
+      // Clamp avg to 0–1 and prevent NaN/Infinity
+      const avg = Math.min(1, Math.max(0, sum / count));
 
-      // Count violations for this group
+      // Count violations under the similarity threshold
       let groupViolations = 0;
       let groupTotal = 0;
-
+      
       for (const row of filteredRows) {
-        if (row[3] !== ioType) continue;
-
+        const rowIO = row[3];
+        if (rowIO !== ioType) continue;
+      
         const val = parseFloat(row[colIndex]);
         if (!isNaN(val)) {
           groupTotal++;
-          if (val < driftThreshold) groupViolations++;
+          if (val < driftThreshold) {
+            groupViolations++;
+          }
         }
       }
 
+      // Format the violation count and severity color
       const percentValue =
         groupTotal > 0 ? Math.round((groupViolations / groupTotal) * 100) : 0;
 
@@ -116,6 +128,7 @@ for (const ioType of IO_TYPES) {
         coloredCount = chalk.red(`${groupViolations} (${percentValue}%)`);
       }
 
+      // Push the row to the table
       table.push([
         ioType.toUpperCase(),
         modelType.toUpperCase(),
@@ -127,17 +140,14 @@ for (const ioType of IO_TYPES) {
   }
 }
 
+// Make a fancy CLI box title
 const titleText = `TKYO DRIFT ANALYTICS FOR PAST ${days} DAY(S)`;
 const padding = 24;
 const contentWidth = titleText.length + padding;
 const top = '╔' + '═'.repeat(contentWidth) + '╗';
-const middle = `║${' '.repeat(padding / 2)}${titleText}${' '.repeat(
-  padding / 2
-)}║`;
+const middle = `║${' '.repeat(padding / 2)}${titleText}${' '.repeat(padding / 2)}║`;
 const bottom = '╚' + '═'.repeat(contentWidth) + '╝';
 
+// Put it all together and print
 console.log(chalk.redBright(`${top}\n${middle}\n${bottom}`));
 console.log(table.toString());
-// console.log(
-//   `${totalViolations} total drift events below ${driftThreshold} similarity in ${days}\n`
-// );

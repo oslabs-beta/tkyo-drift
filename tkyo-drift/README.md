@@ -1,3 +1,43 @@
+TODO: Add an explanation for why the first value will never show drift
+
+TODO: Add an install section
+
+TODO: Add section to readme about how to determine the amount of clusters in pythonKMeans.py (num_of_clusters = int(np.sqrt(num_vectors / 2)))
+
+TODO: Add a section to readme about embedding max length, tokenization, and silent truncation
+
+TODO: Changing embedding model names (for example, from 'lexical' to 'bagOfWords') will brick the log. Warn the people.
+
+TODO: Explain limitations of the depth counter and why its only a partial solution.
+
+TODO: We are currently using a Xenova and Hugging Face transformers library split, with xenova in JS (one offs) and HF in PY (batched calls w/ CUDA). We need to explain why we are doing this. As a side note, Xenova IS huggingFace, but not maintained by hugging face, its just the JS version of HF's python library maintained by Xenova
+
+TODO: We need to mention that the rolling file will expand infinity, and should be deleted occasionally.
+
+TODO: We need to remove references to First N vs Last N in training/rolling. Wait a minute... if there is no training data, do we still want to use the rolling files? If yes, do we need to set an upper limit on the first 10k in rolling to represent the training data? That functionality is not in this code at the moment.
+
+TODO: We should probably mention that pythonTrainingEmb.py is a functional duplicate/stripped down version of tkyoDrift because it does all the same things but in batches?
+
+TODO: Add a warning about training batch embedding times, and how slow it is without a graphics card.
+
+TODO: We should add some advice that running tkyoDriftSetTraining.py should be done in a dev environment, and then the data should be moved into the production data folder.
+
+TODO: The file size warning should be updated to include estimates for the log and scalar files.
+
+TODO: We need a dictionary of what each metric displays: Cosine Similarity ranges, EUC distances & norm drift (same thing, but compared diff), textLength drift
+
+| Metric               | Description                                                   |
+|----------------------|---------------------------------------------------------------|
+| `norm`               | Vector magnitude (captures changes in embedding length/energy)|
+| `textLength`         | Raw character count of the input/output text                  |
+| `tokenLength`        | Number of tokens (based on model tokenizer)                   |
+| `entropy`            | Character-level entropy (measures information density)        |
+| `avgWordLength`      | Average word length (indicates language complexity)           |
+| `punctuationDensity`| Ratio of punctuation to characters (captures tone/stylistics) |
+| `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)     |
+
+TODO: In order to run the python hook, they need to spawn a child process to send in our training data. Tell the people
+
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 
 TKYO Drift is a lightweight, transparent drift tracking library for AI workflows. It embeds I/O Pairs and compares them to a configurable baseline to detect drift in semantic, conceptual, or lexical meaning over time.
@@ -22,6 +62,10 @@ For each individual input and output, the following workflow is executed in roug
 ```
 Note that the size of input/output text, embedding dimensions, and how many embedding models are chosen will influence the speed of the workflow. Regardless, if tkyoDrift() is called asynchronously, it should not impact your workflow unless you expect a sustained high volume of user inputs per second.
 ```
+# How do you install this thing?
+
+
+
 
 # How do you use this thing?
 
@@ -42,7 +86,7 @@ You can interact with this library in 3 ways;
 - Computed the drift score using cosine similarity.
 
 ```
-* Depth tracking is useful when you have multiple chain of thought workflows, and want to track drift per depth level. Just pass a depth argument for how nested each I/O is. For example, your model might have Human -> AI -> AI, where the first input and last output would be depth = 0, and the middleware AI's input and output would be depth = 1. 
+* Depth tracking is useful when you have multiple chain of thought workflows, and want to track drift per depth level. Just pass a depth argument for how nested each I/O is. For example, your model might have Human -> AI -> AI, where the first input and last output would be depth = 0, and the middleware AI's input and output would be depth = 1.
 ```
 
 ## Training Ingestion

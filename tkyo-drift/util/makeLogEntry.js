@@ -6,9 +6,9 @@ export default function makeLogEntry(id, mathObject, type, depth) {
   let logPath = '';
   // Construct the destination to the log in the data folder
   if (type === 'COS') {
-    logPath = path.join(OUTPUT_DIR, 'COS_log.csv');
+    logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
   } else {
-    logPath = path.join(OUTPUT_DIR, 'EUC_log.csv');
+    logPath = path.join(OUTPUT_DIR, 'logs', 'EUC_log.csv');
   }
 
   // Create a timestamp
@@ -67,9 +67,16 @@ export default function makeLogEntry(id, mathObject, type, depth) {
   const fileExists = fs.existsSync(logPath);
 
   // Write to file
-  if (!fileExists) {
-    fs.writeFileSync(logPath, headers + inputRow + outputRow);
-  } else {
-    fs.appendFileSync(logPath, inputRow + outputRow);
+  try {
+    if (!fileExists) {
+      fs.writeFileSync(logPath, headers + inputRow + outputRow);
+    } else {
+      fs.appendFileSync(logPath, inputRow + outputRow);
+    }
+  } catch(error) {
+    // * Something failed while writing the log
+    // ? Could be disk permissions, file lock, etc.
+    // ! Consider adding a fallback or alert
+    console.error('Failed to write log entry:', error.message);
   }
 }

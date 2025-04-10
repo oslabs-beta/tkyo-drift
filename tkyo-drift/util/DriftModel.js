@@ -1,14 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { pipeline } from '@xenova/transformers';
-import { spawn } from 'child_process';
-import {
-  OUTPUT_DIR,
-  ROLLING_MAX_SIZE,
-  TRAINING_MAX_SIZE,
-  MODEL_CACHE,
-} from '../tkyoDrift.js';
 import { error } from 'console';
+import fsPromises from 'fs/promises';
+import { spawn } from 'child_process';
+import { pipeline } from '@xenova/transformers';
+import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
 
 export class DriftModel {
   constructor(modelType, modelName, ioType, baselineType, depth = 0) {
@@ -17,88 +13,135 @@ export class DriftModel {
     this.modelName = modelName;
     this.ioType = ioType;
     this.depth = depth;
-    this.maxSize = // TODO: What happens when someone loads 50k training files, are we still limiting the max size to N?
-      baselineType === 'rolling' ? ROLLING_MAX_SIZE : TRAINING_MAX_SIZE;
-    this.filePath = null;
+    this.distance = null;
     this.embedding = null;
     this.byteOffset = null;
     this.dimensions = null;
     this.vectorArray = null;
+    this.scalarMetrics = null;
     this.baselineArray = null;
     this.embeddingModel = null;
+    this.scalarFilePath = null;
+    this.embeddingFilePath = null;
   }
 
   //TODO Work on global error handling
   //TODO Address read/write operation order
 
   // * Function to set the file path
-  setFilePath() {
-    // Construct the file path for this model
-    const filepath = path.join(
-      OUTPUT_DIR,
-      `${this.modelType}.${this.ioType}.${this.baselineType}.bin`
-    );
+  setFilePaths() {
+    try {
+      // ?NOTE: training baselines may use KMeans files, which are handled inside the Python logic.
+      // This JS path is not used for reading training data.
 
-    // Check to see if a file exists at that path, if yes, use it
-    if (fs.existsSync(filepath)) {
-      this.filePath = filepath;
-    } else {
-      // If not, set it to use the rolling path instead
-      this.filePath = path.join(
+      // Construct the base file path for this model
+      const baseName = `${this.modelType}.${this.ioType}.${this.baselineType}`;
+
+      // Assemble the embedding file path (.bin file)
+      const vectorPath = path.join(OUTPUT_DIR, 'vectors', `${baseName}.bin`);
+      const fallbackPath = path.join(
         OUTPUT_DIR,
+        'vectors',
         `${this.modelType}.${this.ioType}.rolling.bin`
+      );
+
+      // Use rolling file path if there is no training data.
+      // ? ctrl+f the README for hybrid mode if you want to know why
+      this.embeddingFilePath = fs.existsSync(vectorPath)
+        ? vectorPath
+        : fallbackPath;
+
+      // 2. Scalar metric path (.scalar.jsonl)
+      this.scalarFilePath = path.join(
+        OUTPUT_DIR,
+        'scalars',
+        `${baseName}.scalar.jsonl`
+      );
+    } catch (error) {
+      throw new Error(
+        `Error in setFilePath for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
       );
     }
   }
 
   // * Function to load the embedding model
   async loadModel() {
-    // Don't reload a model if it's loaded.
-    if (this.embeddingModel) return;
+    try {
+      // Don't reload a model if it's loaded.
+      if (this.embeddingModel) return;
 
-    // Check the global cache to see if the model was already downloaded
-    if (MODEL_CACHE[this.modelName]) {
-      this.embeddingModel = await MODEL_CACHE[this.modelName];
-      return;
+      // Check the global cache to see if the model was already downloaded
+      if (MODEL_CACHE[this.modelName]) {
+        this.embeddingModel = await MODEL_CACHE[this.modelName];
+        return;
+      }
+
+      // Load the model using xenova transformer and the model ID
+      this.embeddingModel = await pipeline(
+        'feature-extraction',
+        this.modelName
+      );
+      MODEL_CACHE[this.modelName] = this.embeddingModel;
+    } catch (error) {
+      throw new Error(
+        `Error in loadModel for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
-
-    // Load the model using xenova transformer and the model ID
-    this.embeddingModel = await pipeline('feature-extraction', this.modelName);
-    MODEL_CACHE[this.modelName] = this.embeddingModel;
   }
 
   // * Function to make an embedding from an input/output pair
   async makeEmbedding(text) {
-    // Invoke the load model if it hasn't been done yet
-    await this.loadModel();
+    try {
+      // Validate I/O text is not null/undefined/empty
+      if (typeof text !== 'string' || text.trim() === '') {
+        throw new Error(
+          'Expected a non-empty string but received invalid input.'
+        );
+      }
 
-    let normalizeType = true;
-    if (this.modelType === 'concept') {
-      normalizeType = false;
-    }
-    // Get the embedding for the input, save to object
-    const result = await this.embeddingModel(text, {
-      pooling: 'mean',
-      normalize: normalizeType,
-    });
-    // console.log(result.data)
-    // Save embedding to the object
-    this.embedding = result.data;
+      // Invoke the load model if it hasn't been done yet
+      await this.loadModel();
 
-    // Save dimensions to object (the actual vector dim is at position 1)
-    this.dimensions = this.embedding.length;
-    //TODO: This may not exist from the return
+      let normalizeType = true;
+      if (this.modelType === 'concept') {
+        normalizeType = false;
+      }
+      // Get the embedding for the input, save to object
+      const result = await this.embeddingModel(text, {
+        pooling: 'mean',
+        normalize: normalizeType,
+      });
 
-    // save byte offset to object
-    this.byteOffset = this.embedding.byteOffset;
-    //TODO: This may not exist in the return
+      // Save embedding to the object
+      this.embedding = result.data;
 
-    // if we throw an error here, it should halt the rest of the code
-    // our check will throw the error if we do not have a match on embedding.length and dims. Given that those are the same, we're being efficient by checking that the two values exist and that they're equal. For some reason, checking if this.byteOffset exists is returning false (e.g. if(this.byteOffset)), despite consistently console logging as "0". Given the todo above, I think we can leave byteOffset out.
-    // console.log(this.embedding, this.dimensions, this.byteOffset)
-    if (!((this.embedding.length === this.dimensions) && this.embedding)) {
-      // console.log(this.byteOffset)
-      throw error('Error making embeddings');
+      // Check if result.data exists and is a numeric array
+      if (
+        !(this.embedding instanceof Float32Array) ||
+        this.embedding.length === 0 ||
+        typeof this.embedding[0] !== 'number'
+      ) {
+        throw new Error('Embedding result is not a valid numeric array.');
+      }
+
+      // Save dimensions to object (the actual vector dim is at position 1)
+      this.dimensions = this.embedding.length;
+
+      // save byte offset to object
+      this.byteOffset = this.embedding.byteOffset;
+
+      // If we throw an error here, it should halt the rest of the code
+      if (!(this.embedding.length === this.dimensions)) {
+        throw error('Dimension Mismatch');
+      }
+
+      if (!this.byteOffset === result.data.byteOffset) {
+        throw error('ByteOffset mismatch');
+      }
+    } catch (error) {
+      throw new Error(
+        `Error in makeEmbedding for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
@@ -107,66 +150,150 @@ export class DriftModel {
     // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
-    // adding in a try/catch block because this doesn't update anything in our constructor, so we'll need to use this. I don't know if this catch block will ever trigger.
     try {
-      // Create a Float32Array from the embedding
+      // Make a new float 32 array out of the embedding
       const float32Array = new Float32Array(this.embedding);
 
-      // Convert to Node buffer and write to disk
-      const buffer = Buffer.from(float32Array.buffer);
-      await fs.promises.appendFile(this.filePath, buffer);
+      // Check to make sure the embedding contains only numbers
+      if (
+        !float32Array.length ||
+        float32Array.some((v) => typeof v !== 'number' || Number.isNaN(v))
+      ) {
+        throw new Error('Invalid embedding: contains non-numeric values.');
+      }
+
+      // Buffer the vector
+      const embeddingBuffer = Buffer.from(float32Array.buffer);
+
+      // Check if the file exists
+      const fileExists = fs.existsSync(this.embeddingFilePath);
+
+      // Validate embedding dimensions BEFORE writing
+      if (float32Array.length !== this.dimensions) {
+        throw new Error(
+          `Dimension mismatch: embedding has ${float32Array.length} values, expected ${this.dimensions}`
+        );
+      }
+
+      // If the file doesn't exist, add the vector, and write a new header
+      if (!fileExists) {
+        // Allocate space for the header shit
+        const headerBuffer = Buffer.alloc(8);
+
+        // Total vectors is 1 on first write
+        headerBuffer.writeUInt32LE(1, 0);
+
+        // Update the header with vector dimensions
+        headerBuffer.writeUInt32LE(this.dimensions, 4);
+
+        // Concatenate the header data with the vector data
+        const fullBuffer = Buffer.concat([headerBuffer, embeddingBuffer]);
+
+        // Write the header to the file
+        await fs.promises.writeFile(this.embeddingFilePath, fullBuffer);
+
+        // If the file does exist, append the vector, and update the existing header
+      } else {
+        // Validate the file header matches this.dimensions BEFORE writing
+        const fd = await fs.promises.open(this.embeddingFilePath, 'r');
+        const headerBuffer = Buffer.alloc(8);
+        await fd.read(headerBuffer, 0, 8, 0);
+        await fd.close();
+
+        const fileVectorDims = headerBuffer.readUInt32LE(4);
+        if (fileVectorDims !== this.dimensions) {
+          throw new Error(
+            `File dimension mismatch: file expects ${fileVectorDims}, embedding has ${this.dimensions}`
+          );
+        }
+
+        // Append new vector
+        await fs.promises.appendFile(this.embeddingFilePath, embeddingBuffer);
+
+        // Recalculate new vector count
+        const stats = await fs.promises.stat(this.embeddingFilePath);
+        const vectorsInBinCount = Math.floor(
+          (stats.size - 8) / (this.dimensions * 4)
+        );
+
+        // Update header: numVectors
+        const fullHeaderBuffer = Buffer.alloc(8);
+        fullHeaderBuffer.writeUInt32LE(vectorsInBinCount, 0);
+        fullHeaderBuffer.writeUInt32LE(this.dimensions, 4);
+
+        const fileHandle = await fs.promises.open(this.embeddingFilePath, 'r+');
+        // Rewrite the full header 8 bytes to prevent bin corruption
+        // ! Once upon a time, we only updated the first 4 bytes. It broke everything.
+        await fileHandle.write(headerBuffer, 0, 8, 0);
+        await fileHandle.close();
+      }
     } catch (error) {
-      throw error('error saving to binary file', error);
+      throw new Error(
+        `Error in saveToBin for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
   }
 
-  // * Function to read the contents of the Bins
+  // * Function to read the contents of the Bins, Build an HNSW, and then get the
   async readFromBin() {
-    console.time(this.filePath);
-    // Load the raw binary blob (4 bytes per value, saved as float32)
-    const stream = fs.createReadStream(this.filePath, {
-      highWaterMark: this.dimensions * 4,
-    });
+    try {
+      return new Promise((resolve, reject) => {
+        const pyProg = spawn('python3', [
+          './util/pythonHNSW.py',
+          this.ioType,
+          this.modelType,
+          JSON.stringify(Array.from(this.embedding)),
+          this.baselineType,
+        ]);
 
-    // Make a placeholder storage array
-    const vectorList = [];
+        let result = '';
+        let error = '';
 
-    // Iterate through each chunk from the data stream
-    for await (const chunk of stream) {
-      // Guard against partial chunks
-      if (chunk.length !== this.dimensions * 4) continue;
-      // Interpret the chunk directly as Float32Array
-      const float32Array = new Float32Array(
-        chunk.buffer,
-        chunk.byteOffset,
-        this.dimensions
+        // This function is for accepting to data from python
+        // Data is the binary form of the result from python
+        pyProg.stdout.on('data', (data) => {
+          // Result is the stringified version of the result from python
+          result += data.toString();
+        });
+
+        // This function is for error handling
+        // Data is the binary from of the error from python
+        pyProg.stderr.on('data', (data) => {
+          console.error('[PYTHON STDERR]', data.toString()); // ! This is for testing, remove later
+          // Error is the stringified version of the error from python
+          error += data.toString();
+        });
+
+        pyProg.on('close', (code) => {
+          if (code !== 0) {
+            reject(
+              new Error(
+                `Python process failed in readFromBin for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error}`
+              )
+            );
+            return;
+          }
+
+          // Destructure from result after parsing the result, changing it from a string to an object
+          const { centroids, distances } = JSON.parse(result);
+
+          // Assign the centroids to vectorArray
+          this.vectorArray = centroids;
+
+          // Assign the average of all distances from centroids to the distance
+          this.distance =
+            Array.isArray(distances) && distances.length > 0
+              ? // Since distance is null occasionally, we only assign if it isn't
+                distances.reduce((sum, val) => sum + val, 0) / distances.length
+              : null;
+
+          resolve({ centroids, distances });
+        });
+      });
+    } catch (error) {
+      throw new Error(
+        `Error in readFromBin for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
       );
-      // Push to the storage array
-      vectorList.push(float32Array);
-    }
-    // console.log(this.filePath,vectorList[0])
-
-    // Determine if we have less vectors than the rolling max size
-    const totalVectors = vectorList.length;
-    const vectorCount = Math.min(this.maxSize, totalVectors);
-
-    // console.log(this.filePath,this.dimensions,totalVectors)
-    // Calculate the start index based on rolling or training window
-    const startIndex =
-      this.baselineType === 'training'
-        ? 0
-        : Math.max(totalVectors - vectorCount - 1, 0);
-
-    // Set vector array to an array of arrays equal to the size of vector count
-    this.vectorArray = new Array(vectorCount);
-
-    // Populate the final vector array with the most recent N vectors
-    for (let i = 0; i < vectorCount; i++) {
-      // Calculate the start and end positions need to pull out of from the float array
-      const vector = vectorList[startIndex + i];
-
-      // Assign the vector from the float array to the vector array
-      this.vectorArray[i] = vector;
     }
     console.timeEnd(this.filePath);
     // initialize a length checker to be the training max size for training and the rolling max size for not trainings. We are verifying that the vector array length for each model is equal to the appropriate size (currently 10 for rolling and 10000 for training), and also checking to see if there aren't values listed in totalVectors (totalVectors counts the number of vectors in the file, so if it is falsy we have a problem)
@@ -179,62 +306,225 @@ export class DriftModel {
 
   // * Function to get baseline value from vectorArray
   getBaseline() {
-    // TODO: This is K of All Vectors, and we should not use that K value
-    // Set the baseline array to the proper dimensions
-    this.baselineArray = new Float32Array(this.dimensions);
+    try {
+      // Check to make sure the vectorArray was correctly set in readFromBin
+      if (!Array.isArray(this.vectorArray) || this.vectorArray.length === 0) {
+        throw new Error('Baseline vectorArray is missing or empty.');
+      }
 
-    // Set each value in the baseline array equal to the mean of the vector array
-    for (let i = 0; i < this.dimensions; i++) {
-      this.baselineArray[i] =
-        this.vectorArray.reduce(
-          (accumulator, currentValue) => accumulator + currentValue[i],
-          0
-        ) / this.vectorArray.length;
+      // Validate the structure of the vector array before attempting to reduce it
+      if (!Array.isArray(this.vectorArray[0])) {
+        throw new Error('Baseline vectorArray is not an array of arrays.');
+      }
+
+      // If readFromBin returns a single vector, skip the math and return out.
+      if (this.vectorArray.length === 1) {
+        this.baselineArray = new Float32Array(this.vectorArray[0]);
+        return;
+      }
+
+      // Set the baseline array to the proper dimensions
+      this.baselineArray = new Float32Array(this.dimensions);
+
+      // Set each value in the baseline array equal to the mean of the vector array
+      for (let i = 0; i < this.dimensions; i++) {
+        this.baselineArray[i] =
+          this.vectorArray.reduce(
+            (accumulator, currentValue) => accumulator + currentValue[i],
+            0
+          ) / this.vectorArray.length;
+      }
+
+      // Sanity check: Make sure the baseline is valid
+      const valid = this.baselineArray.every(
+        (val) => typeof val === 'number' && !Number.isNaN(val)
+      );
+
+      if (!valid || this.baselineArray.length !== this.dimensions) {
+        throw error(
+          'Error getting baseline: invalid values or dimension mismatch'
+        );
+      }
+    } catch (error) {
+      throw new Error(
+        `Error in getBaseline for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
-    // this checks two things. First that our baseline array length is equal to dims (should always be true), and second that the baseline array at index 0 is between 1 and -1, inclusively. Currently commented out because our data is returning some NaNs. I'm leaving it at this point right now, but rather than checking at [0], we should probably include it in the for loop so we check every value, not just one. That would be more robust.
-    if (
-      this.baselineArray.length !== this.dimensions
-      //
-      // || !(this.baselineArray[0]<=1 || this.baselineArray>=-1)
-    ) {
-      throw error('Error getting baseline');
-    }
-    // console.log(this.baselineArray.length, this.dimensions)
   }
-  // TODO: add error handling for getCosineSimilarity and getEuclideanDistance
+
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
-    // Calculate the dot product of the A and B arrays
-    let dotProduct = 0;
-    for (let i = 0; i < this.dimensions; i++) {
-      dotProduct += this.embedding[i] * this.baselineArray[i];
-      // commenting this out because I am having some trouble identifying whether or not dotProduct is an actual number. NaN is still classified as number, and we can't successfully check if dotProduct is strictly equal to NaN to throw an error at that point.
-      // if (dotProduct === NaN){
-      //   console.log("NaN")
-      // }
+    try {
+      // Validate the embedding and baselines both exist
+      if (
+        !(this.embedding instanceof Float32Array) ||
+        !(this.baselineArray instanceof Float32Array)
+      ) {
+        throw new Error('Missing embedding or baseline for cosine similarity.');
+      }
+
+      // Validate that both the baseline and embedding lengths match
+      if (this.embedding.length !== this.baselineArray.length) {
+        throw new Error(
+          `Embedding and baseline length mismatch: ${this.embedding.length} vs ${this.baselineArray.length}`
+        );
+      }
+
+      // Calculate the dot product of the A and B arrays
+      let dotProduct = 0;
+      for (let i = 0; i < this.dimensions; i++) {
+        dotProduct += this.embedding[i] * this.baselineArray[i];
+      }
+
+      // Calculate the magnitude of A
+      const magnitudeA = Math.sqrt(
+        this.embedding.reduce((sum, a) => sum + a * a, 0)
+      );
+
+      // Calculate the magnitude of B
+      const magnitudeB = Math.sqrt(
+        this.baselineArray.reduce((sum, b) => sum + b * b, 0)
+      );
+
+      // Calculate the denominator
+      const denominator = magnitudeA * magnitudeB;
+
+      // Validate that the denominator is not 0
+      if (denominator === 0) {
+        throw new Error(
+          'Zero magnitude detected in cosine similarity calculation.'
+        );
+      }
+
+      // Return the cosine similarity between A and B, clamping the results to prevent rounding errors
+      return Math.min(1, dotProduct / denominator);
+    } catch (error) {
+      throw new Error(
+        `Error in getCosineSimilarity for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
     }
-
-    // Calculate the magnitude of A
-    const magnitudeA = Math.sqrt(
-      this.embedding.reduce((sum, a) => sum + a * a, 0)
-    );
-
-    // Calculate the magnitude of B
-    const magnitudeB = Math.sqrt(
-      this.baselineArray.reduce((sum, b) => sum + b * b, 0)
-    );
-
-    // return the cosine similarity between A and B, clamping the results to prevent rounding errors
-    return Math.min(1, dotProduct / (magnitudeA * magnitudeB));
   }
 
+  // * Function to calculate the euclidean distance from the baseline
   getEuclideanDistance() {
-    // Calculate the distance between the embedding and baselineArray
-    return Math.sqrt(
-      this.embedding.reduce(
-        (sum, a, i) => sum + (a - this.baselineArray[i]) ** 2,
-        0
-      )
-    );
+    try {
+      // Validate that the embedding and baselines exist
+      if (
+        !(this.embedding instanceof Float32Array) ||
+        !(this.baselineArray instanceof Float32Array)
+      ) {
+        throw new Error('Missing embedding or baseline.');
+      }
+
+      // Validate that the embedding and baselines are the same length
+      if (this.embedding.length !== this.baselineArray.length) {
+        throw new Error(
+          `Embedding and baseline length mismatch: ${this.embedding.length} vs ${this.baselineArray.length}`
+        );
+      }
+
+      // If distance was already computed by Python, use it...
+      if (typeof this.distance === 'number') {
+        return this.distance;
+      }
+
+      // ...otherwise, calculate the distance between the embedding and baselineArray
+      return Math.sqrt(
+        this.embedding.reduce(
+          (sum, a, i) => sum + (a - this.baselineArray[i]) ** 2,
+          0
+        )
+      );
+    } catch (error) {
+      throw new Error(
+        `Error in getEuclideanDistance for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
+    }
+  }
+
+  // * Function to siphon PSI distribution metrics
+  captureScalarMetrics(text) {
+    // Skip if training — this method is only for rolling baseline
+    if (this.baselineType === 'training') return;
+
+    try {
+      // Only capture scalar metrics if the training scalar file exists
+      // ? Scalar metrics are only useful when comparing rolling to training data
+      const trainingScalarPath = path.join(
+        OUTPUT_DIR,
+        'scalars',
+        `${this.modelType}.${this.ioType}.training.scalar.jsonl`
+      );
+
+      // Skip logging if no baseline exists
+      if (!fs.existsSync(trainingScalarPath)) {
+        return;
+      }
+      // TODO: We have this already when we get COS, we should probably save that instead
+      // * Get L2 Norm value
+      const norm = Math.sqrt(
+        this.embedding.reduce((sum, val) => sum + val * val, 0)
+      );
+
+      // * Get Raw Input Length
+      // ? Functionally a duplicate from token length, but token length maxes at the embedder token max (512 typically)
+      const textLength = text.length;
+
+      // * Get Token Length
+      const tokenLength = this.embeddingModel.tokenizer.encode(text).length;
+
+      // * Get Character Entropy
+      const counts = {};
+      for (const char of text) counts[char] = (counts[char] || 0) + 1;
+      const entropy = -Object.values(counts).reduce((sum, count) => {
+        const p = count / text.length;
+        return sum + p * Math.log2(p);
+      }, 0);
+
+      // * Get Average Word Length
+      const avgWordLength = text.split(/\s+/).reduce((sum, word) => sum + word.length, 0) / (text.split(/\s+/).length || 1);
+
+      // * Get Punctuation Density
+      const punctuationDensity = (text.match(/[.,!?;]/g)?.length || 0) / text.length;
+
+      // * Get Uppercase Ratio
+      const uppercaseRatio = (text.match(/[A-Z]/g)?.length || 0) / text.length;
+
+
+      // Store the metrics
+      this.scalarMetrics = {
+        timestamp: new Date().toISOString(),
+        metrics: {
+          norm,
+          textLength,
+          tokenLength,
+          entropy,
+          avgWordLength,
+          punctuationDensity,
+          uppercaseRatio,
+        },
+      };
+    } catch (error) {
+      throw new Error(
+        `Error in captureScalarMetrics for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
+    }
+  }
+
+  async saveScalarMetrics() {
+    // Skip if training — this method is only for rolling baseline
+    if (this.baselineType === 'training') return;
+
+    try {
+      // Make a single JSON line out of the scalar metric
+      const line = JSON.stringify(this.scalarMetrics) + '\n';
+
+      // Write to file
+      await fsPromises.appendFile(this.scalarFilePath, line);
+    } catch (error) {
+      throw new Error(
+        `Error in saveScalarMetrics for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+      );
+    }
   }
 }
