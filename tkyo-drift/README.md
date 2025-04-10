@@ -12,14 +12,16 @@ This tool is designed for performance-critical environments and was designed to 
 
 ## Drift Analysis Flow
 
-For each individual input and output, the following workflow is executed in roughly ~500ms. 
+For each individual input and output, the following workflow is executed in roughly 800ms. 
 
 1. Generate embeddings for both input and output.
 2. Save them to `.bin` files (except for training mode).
 3. Load historical vectors from disk.
 4. Compute baseline vectors as an average of past embeddings.
 5. Calculate cosine similarity.
-6. Append results to `drift_log.csv`.
+6. Calculate euclidean distance.
+7. Capture scalar metrics.
+6. Append results to `COS_log.csv`, `EUC_log.csv`, and scalar metric files.
 
 ```
 Note that the size of input/output text, embedding dimensions, and how many embedding models are chosen will influence the speed of the workflow. Regardless, if tkyoDrift() is called asynchronously, it should not impact your workflow unless you expect a sustained high volume of user inputs per second.
@@ -33,7 +35,7 @@ TODO: Add an install section
 You can interact with this library in 3 ways; 
 - Dispatch a one-off I/O pair to `tkyoDrift()`
 - Dispatch sequential training data through a batch upload to `tkyoDriftSetTraining()`*
-- Request a CLI print out of the log's summary using `npx tkyoDrift -#` (where # is a number)
+- Request a CLI print out of the log's summary using `npx tkyoDrift -#` (where # is a number of days) TODO: Update this when the NPM package is built.
 
 ```
 * Do this from a strong PC, and then copy your data into the appropriate folders. Due to a number of factors (I/O Length, CUDA access, memory, cpu cores, training data size) this process can take an exceptionally long time to complete.
@@ -47,7 +49,8 @@ You can interact with this library in 3 ways;
 - Embeds serially using as many models as you specify.
 - Appends to the rolling data file (only).
 - Reads from the file to load a baseline for comparison.
-- Computed the drift score using cosine similarity.
+- Computes the drift score using cosine similarity.
+- Assign a unique ID hash to the I/O pair
 
 ```
 * Depth tracking is useful when you have multiple chain of thought workflows, and want to track drift per depth level. Just pass a depth argument for how nested each I/O is. For example, your model might have Human -> AI -> AI, where the first input and last output would be depth = 0, and the middleware AI's input and output would be depth = 1.
@@ -58,10 +61,7 @@ You can interact with this library in 3 ways;
 `tkyoDriftSetTraining.js(filepath)` handles full dataset ingestion for baseline creation. It:
 
 - Accepts an array of `{ input, output }` objects.
-- Embeds in chunks of 100 for performance.
-- Clears old training files before writing new ones.
-- Locks files after saving.
-- Optionally runs garbage collection between chunks.
+- Embeds each input in chunks of 100, with 8 in parallel for performance, once for each model type.
 
 ```
 IMPORTANT! The set training data file should ONLY be run when you intend on replacing the existing tkyoDrift training data file set. This command will obliterate any existing tkyoDrift training files. 
@@ -86,12 +86,12 @@ ID, DEPTH, TIMESTAMP, I/O TYPE, SEMANTIC ROLLING EUC, SEMANTIC TRAINING EUC, CON
 - Cosine similarities and euclidean distances are recorded per model and baseline type.
 - Additional metadata like `depth` and UUIDs are included for tracking.
 - UUIDs are shared for the input and output, so that you can review your input/output data logs to inspect which I/O pairs are causing drift.
-- Neither the log, nor the binary files, contain your users input or ai outputs. This data is not necessary to calculate drift, and it's exclusion is an intentional choice for data privacy.
+- Neither the log, nor the binary files, contain your users input or ai outputs. This data is not necessary to calculate drift, and its exclusion is an intentional choice for data privacy.
 
 ```
-Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your lexical model from "lexical" to "linguistic". When writing to the log, the makeLogEntry method of the Drift Class would work, but the log Parser would fail. 
+Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your lexical model from "lexical" to "linguistic" when writing to the log, the makeLogEntry method of the Drift Class would work, but the log Parser would fail. 
 
-Keep in mind, however, you can change models any time you like, though that will brick drift calculations for a different reason; Your inputs/outputs we be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
+Keep in mind, however, you can change models any time you like, though that will brick drift calculations for a different reason; your inputs/outputs we be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
 ```
 
 ## CLI Tools
@@ -100,7 +100,7 @@ TODO: Add the command we need people to enter to trigger this log here after the
 
 ### `printLogCLI.js`
 
-Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjust to your expected precision needs.
+Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
 ```
 Note: The first record you enter into this system will always show that there is 0 drift when compared against the rolling data set. This is because the rolling dataset will be compared against itself at that point and there will be no drift to detect. This is a known issue, and was an intentional choice as the alternative would be to exclude a write to the `COS_log.csv` and `EUC_log.csv` logs on first write. 
@@ -110,9 +110,9 @@ If this bothers you, you can remove line 2 from the COS and EUC logs after you u
 
 ### `printScalarCLI.js`
 
-Parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjust to your expected precision needs.
+Parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
-The scalar metrics the system is currently tracking is listed below:
+The scalar metrics the system is currently tracking are listed below:
 
 | Metric               | Description                                                   |
 |----------------------|---------------------------------------------------------------|
@@ -125,7 +125,7 @@ The scalar metrics the system is currently tracking is listed below:
 | `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)     |
 
 ```
-Note: Without batch embedding your training data, you will be unable to view scalar metrics. However, we will still collect scalar metrics for your rolling data in case you add training data later.
+Note: Without batch embedding your training data, you will be unable to view scalar metrics. However, we will still collect scalar metrics for your rolling data in the event you add training data at a later time.
 ```
 
 # Architecture
@@ -156,7 +156,7 @@ Drift is detected across combinations of:
 - `ioType`: input, output
 - `baselineType`: rolling, training
 
-This results in either six or twelve cosine similarity and euclidean distance comparisons per I/O pair, depending on whether or not training data was provided.
+This results in twelve cosine similarity and euclidean distance comparisons (assuming you use the default models) for each tkyoDrift.js function call.
 - All embeddings are pooled across all input tokens to get mean values from the input and normalized for all models except for the conceptual drift type.
 - Models are loaded sequentially and cached globally to reduce loading time.
 
@@ -176,14 +176,14 @@ The rolling baseline represents the accumulation of inputs and outputs as they a
 
 The training baseline represents the set of inputs used to generate the initial model AI responses, which are ingested by running the 'tkyoDriftSetTraining.py' script. This script performs a batch analysis of each I/O pair used in the training set and creates an artificially 'locked' training file that can not/will not be be appended to over time. Theoretically, you should only need to update this when you have retrained you model.
 
-- `Hybrid`: Use the rolling file to provide first K (default 10,000) and last N (default 1,000) simultaneously.
+- `Hybrid`: Use the rolling file to provide oldest K (default 10,000) and newest N (default 1,000) simultaneously.
 
-In the event that there is no training data supplied to the system, the Drift analyzer will use the first N values entered into the rolling file to represent mock 'training' data, while the last K (default of 10,000) values represent the 'rolling' data. This allows us to compare drift against an anchor point to see drift over time, while still having a rolling window to see shock impacts to the system caused by new concepts/semantics/lexicon.
+In the event that there is no training data supplied to the system, the Drift analyzer will use the oldest K values entered into the rolling file to represent mock 'training' data, while the newest K values represent the 'rolling' data. This allows us to compare drift against an anchor point to see drift over time, while still having a rolling window to see shock impacts to the system caused by new concepts/semantics/lexicon.
 
 
 ### Binary Embedding Storage
 
-Embeddings are saved in `.bin` files using float16 for efficient storage. This minimizes disk I/O and enables fast appending. Note that math calculates are still performed in float32 after float16 conversions after disk reads. While this adds noise and make drift detection less precise, it should only impact drift detection after 6 decimal points.
+Embeddings are saved in `.bin` files using float32 for efficient storage. This minimizes disk I/O and enables fast appending.
 
 - Each file is named:  
   `{modelType}.{ioType}.{baselineType}.bin`
@@ -205,6 +205,7 @@ Scalar files are negligibly large, and even with 1 million records, they should 
 ```
 The rolling files have no upper limit on their size, and will require manual pruning eventually depending on your workflow's throughput. Incidentally, if you do not have access to your training data (you may be using a 3rd party model without a published data set) you may benefit from renaming your rolling files to training files after you have accumulated 10,000 entries.
 ```
+TODO: We should probably explain which files exist and why, and as an extension what happens to the system where there isn't a training file to pull data from. This might not need to go here, in the read me, but it should be close to the hybrid mode section.
 
 ### IO Write/Read Methods
 
