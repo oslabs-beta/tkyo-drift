@@ -449,7 +449,7 @@ export class DriftModel {
       if (!fs.existsSync(trainingScalarPath)) {
         return;
       }
-
+      // TODO: We have this already when we get COS, we should probably save that instead
       // * Get L2 Norm value
       const norm = Math.sqrt(
         this.embedding.reduce((sum, val) => sum + val * val, 0)
