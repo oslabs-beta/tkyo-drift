@@ -6,24 +6,38 @@ import { MODELS, IO_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
 import { loadScalarMetrics } from './loadScalarMetrics.js';
 import { compareScalarDistributions } from './compareScalarDistributions.js';
 
-// TODO: This is 1 step short of actually doing PSI math, which should probably be it's own util function 
-// Container to hold all metrics for each model/io combo
+// Create an object to hold the drift results, grouped by each metric name
 const driftByMetric = {};
 
+// -------------<< Collection Phase >> -------------
+// Loop through every input/output type
 for (const ioType of IO_TYPES) {
+  // Loop through every model type (semantic, lexical, concept, etc.)
   for (const [modelType] of Object.entries(MODELS)) {
+    // Build the base file name for scalar logs
     const baseName = `${modelType}.${ioType}`;
-    const trainingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.training.scalar.jsonl`);
-    const rollingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.rolling.scalar.jsonl`);
+    const trainingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.training.scalar.jsonl`
+    );
+    const rollingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.rolling.scalar.jsonl`
+    );
 
-    // Skip if either file doesn't exist
+    // Skip this model/io combination if either file doesn't exist
     if (!fs.existsSync(trainingPath) || !fs.existsSync(rollingPath)) continue;
 
+    // Load scalar values from both training and rolling baseline
     const training = await loadScalarMetrics(trainingPath);
     const rolling = await loadScalarMetrics(rollingPath);
+
+    // Compare the distributions for each metric to compute deltas
     const drift = compareScalarDistributions(training, rolling);
 
-    // Push each metric's comparison results into grouped object
+    // For every metric (e.g., norm, entropy, etc.), store the deltas in driftByMetric
     for (const [metric, values] of Object.entries(drift)) {
       if (!driftByMetric[metric]) driftByMetric[metric] = [];
       driftByMetric[metric].push({
@@ -36,28 +50,53 @@ for (const ioType of IO_TYPES) {
   }
 }
 
-//  Render Each Metric Table
+// ! Band aid fix: All values for all models are the same, except for norm.
+// ? So we should not be displaying the scalar metrics for each model combo UNLESS its the norm value
+// ------------------<< Build Tables Phase >> -----------------
+// Loop over each unique scalar metric (e.g., norm, entropy, etc.)
 for (const [metric, rows] of Object.entries(driftByMetric)) {
-  // Build CLI-style table for each metric
+  const isNorm = metric === 'norm';
+  // Create a new table for this metric
   const table = new Table({
-    head: [
-      chalk.bold.white('I/O Type'),
-      chalk.bold.white('Drift Type'),
-      chalk.bold.white(`Mean Delta`),
-      chalk.bold.white(`Std Delta`),
-    ],
+    head: isNorm
+      ? [
+          chalk.bold.white('I/O Type'),
+          chalk.bold.white('Drift Type'),
+          chalk.bold.white('Mean Delta'),
+          chalk.bold.white('Std Delta'),
+        ]
+      : [
+          chalk.bold.white('I/O Type'),
+          chalk.bold.white('Mean Delta'),
+          chalk.bold.white('Std Delta'),
+        ],
   });
 
+  const seenIO = new Set();
+
+  // Add one row per model/io combo to the table
   for (const row of rows) {
-    table.push([
-      row.ioType.toUpperCase(),
-      row.modelType.toUpperCase(),
-      formatDelta(row.meanDelta),
-      formatDelta(row.stdDelta),
-    ]);
+    const ioKey = row.ioType;
+
+    if (!isNorm) {
+      if (seenIO.has(ioKey)) continue;
+      seenIO.add(ioKey);
+      table.push([
+        row.ioType.toUpperCase(),
+        formatDelta(row.meanDelta),
+        formatDelta(row.stdDelta),
+      ]);
+    } else {
+      table.push([
+        row.ioType.toUpperCase(),
+        row.modelType.toUpperCase(),
+        formatDelta(row.meanDelta),
+        formatDelta(row.stdDelta),
+      ]);
+    }
   }
 
-  // CLI-style title block for each metric section
+  // Generate a fancy boxed title for this section
   const title = `'${metric}' drift in Rolling vs. Training`;
   const pad = 12;
   const width = title.length + pad;
@@ -65,11 +104,12 @@ for (const [metric, rows] of Object.entries(driftByMetric)) {
   const middle = `║${' '.repeat(pad / 2)}${title}${' '.repeat(pad / 2)}║`;
   const bottom = '╚' + '═'.repeat(width) + '╝';
 
+  // Print the section header and table
   console.log(chalk.cyanBright(`\n${top}\n${middle}\n${bottom}`));
   console.log(table.toString());
 }
 
-//  Format Delta with fancy colors
+// Takes a delta value and adds color coding depending on severity
 function formatDelta(val) {
   if (typeof val !== 'number') return chalk.gray('n/a');
   const formatted = val.toFixed(2);
@@ -78,31 +118,56 @@ function formatDelta(val) {
   return chalk.red(formatted);
 }
 
-//  this whole section below is to calculate how many training vs rolling we are comparing
+// ------------<< Element Count Phase >>-----------------
+// Count how many unique samples we are comparing (normalized)
 let trainingCount = 0;
 let rollingCount = 0;
+let trainingCombos = 0;
+let rollingCombos = 0;
 
+// Count total lines across all scalar files, and how many file combos exist
 for (const ioType of IO_TYPES) {
   for (const [modelType] of Object.entries(MODELS)) {
     const baseName = `${modelType}.${ioType}`;
-    const trainingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.training.scalar.jsonl`);
-    const rollingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.rolling.scalar.jsonl`);
+    const trainingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.training.scalar.jsonl`
+    );
+    const rollingPath = path.join(
+      OUTPUT_DIR,
+      'scalars',
+      `${baseName}.rolling.scalar.jsonl`
+    );
 
     if (fs.existsSync(trainingPath)) {
-      const lines = fs.readFileSync(trainingPath, 'utf-8').split('\n').filter(Boolean);
+      const lines = fs
+        .readFileSync(trainingPath, 'utf-8')
+        .split('\n')
+        .filter(Boolean);
       trainingCount += lines.length;
+      trainingCombos++;
     }
 
     if (fs.existsSync(rollingPath)) {
-      const lines = fs.readFileSync(rollingPath, 'utf-8').split('\n').filter(Boolean);
+      const lines = fs
+        .readFileSync(rollingPath, 'utf-8')
+        .split('\n')
+        .filter(Boolean);
       rollingCount += lines.length;
+      rollingCombos++;
     }
   }
 }
 
-const modelCombos = Object.keys(MODELS).length *2; // times 2 because input and output
-const adjustedTrainingCount = Math.floor(trainingCount / modelCombos);
-const adjustedRollingCount = Math.floor(rollingCount / modelCombos);
+// Normalize the totals by dividing by number of model/io combinations
+const adjustedTrainingCount = trainingCombos
+  ? Math.floor(trainingCount / trainingCombos)
+  : 0;
+const adjustedRollingCount = rollingCombos
+  ? Math.floor(rollingCount / rollingCombos)
+  : 0;
 const footer = `Samples — Training: ${adjustedTrainingCount.toLocaleString()}   |   Rolling: ${adjustedRollingCount.toLocaleString()}`;
 
+// Display total sample counts for transparency
 console.log(chalk.gray(`\n${footer}\n`));
