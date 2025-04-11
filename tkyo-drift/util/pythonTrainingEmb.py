@@ -58,9 +58,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # This prevents the creation of gradients
     @torch.no_grad()
-    # TODO: This section effectively means we are only embedding the first 512 tokens, and all data thereafter is lost
-    # ! Should be ok for most AI workflows, but this will be a problem for ones that take large text inputs
- 
+
     # When invoked, this will embed the current batch
     def embed_data(data):
         # Stores texts shorter than 512 tokens
@@ -172,73 +170,34 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         emb = embed_data(batch)
 
         # Compute and log scalar metrics for each item in batch
-        scalar_lines = []
+        # Loop through each embedded vector in the current batch
         for j, vector in enumerate(emb):
-            text = batch[j]
+            text = batch[j]  # Get the original text that produced this vector
+            timestamp = datetime.utcnow().isoformat() + "Z" 
 
-            # Norm of the vector
+            # ------------- << MODEL-SPECIFIC SCALAR METRICS >> -------------
+
+            # L2 norm of the vector = magnitude of the embedding (model-dependent)
             norm = float(np.linalg.norm(vector))
 
-            # Raw text length
-            text_length = len(text)
 
-            # Token length (use tokenizer to match JS side)
-            token_length = len(tokenizer.encode(text))
+            # Model-specific metrics
+            model_metrics = {
+                "norm": norm,
+            }
 
-            # Character-level entropy
-            counts = {}
-            for c in text:
-                counts[c] = counts.get(c, 0) + 1
-            entropy = -sum(
-                (count / len(text)) * np.log2(count / len(text))
-                for count in counts.values()
-            )
+            # Save each metric in its own file
+            for metric, value in model_metrics.items():
+                # Build file name: ioType.metric.modelType.training.scalar.jsonl
+                file_path = f"data/scalars/{io_type}.{metric}.{model_type}.training.scalar.jsonl"
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-            # Average word length
-            words = text.split()
-            avg_word_length = (
-                sum(len(word) for word in words) / len(words) if words else 0
-            )
-
-            # Punctuation density
-            punctuation_density = (
-                sum(1 for c in text if c in ".,!?;:") / len(text)
-                if len(text) > 0
-                else 0
-            )
-
-            # Uppercase ratio
-            uppercase_ratio = (
-                sum(1 for c in text if c.isupper()) / len(text) if len(text) > 0 else 0
-            )
-
-            # Store as JSONL
-            scalar_lines.append(
-                json.dumps(
-                    {
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
-                        "metrics": {
-                            "norm": norm,
-                            "textLength": text_length,
-                            "tokenLength": token_length,
-                            "entropy": entropy,
-                            "avgWordLength": avg_word_length,
-                            "punctuationDensity": punctuation_density,
-                            "uppercaseRatio": uppercase_ratio,
-                        },
-                    }
-                )
-                + "\n"
-            )
-
-        # Write to .jsonl file (append mode)
-        os.makedirs("data/scalars", exist_ok=True)
-        with open(
-            f"data/scalars/{model_type}.{io_type}.training.scalar.jsonl",
-            "a",
-            encoding="utf-8",
-        ) as f:
-            f.writelines(scalar_lines)
+                # Write single metric with timestamp to file
+                with open(file_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({
+                        "timestamp": timestamp,
+                        "metrics": {metric: value}
+                    }) + "\n")
 
         # Add this batch's embeddings
         embeddings.append(emb)

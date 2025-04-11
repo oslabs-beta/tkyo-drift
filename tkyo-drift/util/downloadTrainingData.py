@@ -3,7 +3,6 @@ import sys
 sys.dont_write_bytecode = True
 from datasets import load_dataset
 
-# TODO: Delete this whole file before going live?
 data_location = "SmallDoge/SmallThoughts"
 # data_location = 'open-thoughts/OpenThoughts2-1M'
 
