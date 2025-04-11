@@ -64,12 +64,13 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
   const table = new Table({
     head: [
       chalk.bold.white('Metric'),
-      chalk.bold.white('Train μ'),     // Mean of training data
-      chalk.bold.white('Roll μ'),      // Mean of rolling data
-      chalk.bold.white('Δ Mean'),      // Difference in means
-      chalk.bold.white('Train σ'),     // Standard deviation of training data
-      chalk.bold.white('Roll σ'),      // Standard deviation of rolling data
-      chalk.bold.white('Δ Std'),       // Difference in std deviation
+      chalk.bold.white('Train μ'),    // Mean of training data
+      chalk.bold.white('Roll μ'),     // Mean of rolling data
+      chalk.bold.white('Δ Mean'),     // Difference in means
+      chalk.bold.white('Train σ'),    // Standard deviation of training data
+      chalk.bold.white('Roll σ'),     // Standard deviation of rolling data
+      chalk.bold.white('Δ Std'),      // Difference in std deviation
+      chalk.bold.white('PSI'),        // 
     ],
   });
 
@@ -100,12 +101,13 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
       formatDelta(drift[metric].trainStd),
       formatDelta(drift[metric].rollStd),
       formatDelta(drift[metric].stdDelta),
+      formatPSI(drift[metric].psi),
     ]);
   }
 
   // Only render tables that have valid data
   if (table.length > 0) {
-    const sectionLabel = `→ ${ioType.toUpperCase()} • ${modelType.toUpperCase()}`;
+    const sectionLabel = `→ ${ioType.toUpperCase()} • ${modelType.toUpperCase()} SCALAR METRIC VALUES`;
     console.log(chalk.bold.white(`\n${sectionLabel}`));
     console.log(table.toString());
   }
@@ -118,6 +120,15 @@ function formatDelta(val) {
   if (Math.abs(val) < 0.1) return chalk.green(formatted);  // Safe
   if (Math.abs(val) < 0.5) return chalk.yellow(formatted); // Caution
   return chalk.red(formatted);                             // Drifted
+}
+
+// Helper to color code PSI values by severity
+function formatPSI(val) {
+  if (typeof val !== 'number') return chalk.gray('n/a');
+  const formatted = val.toFixed(3);
+  if (val < 0.1) return chalk.green(formatted);    // No significant change
+  if (val < 0.25) return chalk.yellow(formatted);  // Moderate change
+  return chalk.red(formatted);                     // Major drift
 }
 
 // -------------<< SAMPLE COUNT FOOTER >>-------------

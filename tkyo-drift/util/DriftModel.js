@@ -442,14 +442,10 @@ export class DriftModel {
         this.embedding.reduce((sum, val) => sum + val * val, 0)
       );
 
-      // Calculate token length using the model tokenizer
-      const tokenLength = this.embeddingModel.tokenizer.encode(text).length;
-
       this.scalarMetrics = {
         timestamp: new Date().toISOString(),
         metrics: {
           norm,
-          tokenLength,
         },
       };
     } catch (error) {
