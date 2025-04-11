@@ -4,6 +4,8 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { MODELS, IO_TYPES, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
 
+// TODO: Violation counts appear to be double their intended value, find out why
+
 // Constants & CLI Args
 const logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
 const args = process.argv.slice(2); 
