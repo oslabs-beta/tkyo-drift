@@ -60,19 +60,21 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             return reshaped_data, num_vectors, dims
 
     # TODO: These paths are relative from their execution directory, so this may not work in production
-     data, num_vectors, dims = load_embeddings(file_path)
-        if (num_vectors < 10):
-            return {
-                "centroids": data.tolist(),
-                "distances": None,
-            }
-    else:
-        raise FileNotFoundError(f"Neither {file_path} nor {data} found!")
+    #load the embeddings and get data, number of vectors, and dimensions from the file.
+    data, num_vectors, dims = load_embeddings(file_path)
+    # if we have fewer than 10 vectors, we immediately return all of the data as is.
+    if (num_vectors < 10):
+        return {
+            "centroids": data.tolist(),
+            "distances": None,
+        }
+   
 
     # Set number of neighbors (k) based on dataset type
     if "kmeans" in file_path:
-        # Use single centroid for kmeans data
+    # Use single centroid for kmeans data
         k = 1
+    #if we aren't using k-means we get a number between 10 and 20 and use that.
     else:
         k = min(20, max(10, int(math.log2(num_vectors)) + 5))
 
