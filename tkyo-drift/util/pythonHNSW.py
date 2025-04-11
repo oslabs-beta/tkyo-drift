@@ -124,7 +124,7 @@ def HNSW(io_type, model_type, query, baseline_type):
 
 # Checks that the file is run directly, not as an import
 if __name__ == "__main__":
-    # Error handling to check that there are 3 arguments and 1 script
+    # Error handling to check that there are 4 arguments and 1 script
     if len(sys.argv) != 5:
         # Print the error
         print(

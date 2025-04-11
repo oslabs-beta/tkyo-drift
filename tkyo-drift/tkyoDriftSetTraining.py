@@ -3,10 +3,14 @@ import sys
 sys.dont_write_bytecode = True
 # Import helper function to load and embed the data
 from util import pythonTrainingEmb
-
+# Allows the use of time functions
 import time
+# JSON serialization/deserialization
+import json
+# Allow error logging for testing purposes
+import traceback
 
-def tkyoDriftSetTraining(data_set_Path, input_name="input", output_name="output"):
+def tkyoDriftSetTraining(data_set_Path, input_name, output_name):
 
     # Starts the total function timer
     startTotal = time.perf_counter()
@@ -38,12 +42,28 @@ def tkyoDriftSetTraining(data_set_Path, input_name="input", output_name="output"
     endTotal = time.perf_counter()
     print(f"Elapsed: {endTotal - startTotal:.6f} seconds")
 
-    return
+    return {"status": "ok", "message": "Training completed"}
 
-# TODO Remove hardcoded path, input name, & output name
-DATASET_PATH = "./data"
-input_name = "problem"
-output_name = "solution"
-# input_name = "['conversations'][0]['value']" 
-# output_name = "['conversations'][1]['value']"
-tkyoDriftSetTraining(DATASET_PATH, input_name, output_name)
+# Checks that the file is run directly, not as an import
+if __name__ == "__main__":
+    # Error handling to check that there are 3 arguments and 1 script
+    if len(sys.argv) != 4:
+        # Print the error
+        print(
+            json.dumps(
+                {
+                    "error": "Usage: python3 pythonHNSW.py <io_type> <model_type> <query_json> <baseline_type>"
+                }
+            )
+        )
+        sys.exit(1)
+    try:
+        # assign the value of result to the evaluated result of invoking HNSW with the 3 input arguments
+        result = tkyoDriftSetTraining(sys.argv[1], sys.argv[2], sys.argv[3])
+        # Returns the value of result to javascript file
+        print(json.dumps(result))
+        # Catch all error handling
+    except Exception as e:
+        traceback.print_exc(file=sys.stderr)
+        print(json.dumps({"error": str(e)}))
+        sys.exit(1)
