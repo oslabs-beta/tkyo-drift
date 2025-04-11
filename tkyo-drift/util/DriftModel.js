@@ -432,87 +432,70 @@ export class DriftModel {
   }
 
   // * Function to siphon PSI distribution metrics
-  captureScalarMetrics(text) {
-    // Skip if training — this method is only for rolling baseline
-    if (this.baselineType === 'training') return;
-
+  captureModelSpecificScalarMetrics(text) {
     try {
-      // Only capture scalar metrics if the training scalar file exists
-      // ? Scalar metrics are only useful when comparing rolling to training data
-      const trainingScalarPath = path.join(
-        OUTPUT_DIR,
-        'scalars',
-        `${this.modelType}.${this.ioType}.training.scalar.jsonl`
-      );
+      // Skip if training — this method is only for rolling baseline
+      if (this.baselineType === 'training') return;
 
-      // Skip logging if no baseline exists
-      if (!fs.existsSync(trainingScalarPath)) {
-        return;
-      }
-      // TODO: We have this already when we get COS, we should probably save that instead
-      // * Get L2 Norm value
+      // Calculate vector L2 norm
       const norm = Math.sqrt(
         this.embedding.reduce((sum, val) => sum + val * val, 0)
       );
 
-      // * Get Raw Input Length
-      // ? Functionally a duplicate from token length, but token length maxes at the embedder token max (512 typically)
-      const textLength = text.length;
-
-      // * Get Token Length
+      // Calculate token length using the model tokenizer
       const tokenLength = this.embeddingModel.tokenizer.encode(text).length;
 
-      // * Get Character Entropy
-      const counts = {};
-      for (const char of text) counts[char] = (counts[char] || 0) + 1;
-      const entropy = -Object.values(counts).reduce((sum, count) => {
-        const p = count / text.length;
-        return sum + p * Math.log2(p);
-      }, 0);
-
-      // * Get Average Word Length
-      const avgWordLength =
-        text.split(/\s+/).reduce((sum, word) => sum + word.length, 0) /
-        (text.split(/\s+/).length || 1);
-
-      // * Get Punctuation Density
-      const punctuationDensity =
-        (text.match(/[.,!?;]/g)?.length || 0) / text.length;
-
-      // * Get Uppercase Ratio
-      const uppercaseRatio = (text.match(/[A-Z]/g)?.length || 0) / text.length;
-
-      // Store the metrics
       this.scalarMetrics = {
         timestamp: new Date().toISOString(),
         metrics: {
           norm,
-          textLength,
           tokenLength,
-          entropy,
-          avgWordLength,
-          punctuationDensity,
-          uppercaseRatio,
         },
       };
     } catch (error) {
       throw new Error(
-        `Error in captureScalarMetrics for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
+        `Error in extractModelScalarMetrics for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
       );
     }
   }
 
+  // * Function to write model-specific scalar metrics to separate files
   async saveScalarMetrics() {
     // Skip if training — this method is only for rolling baseline
     if (this.baselineType === 'training') return;
 
     try {
-      // Make a single JSON line out of the scalar metric
-      const line = JSON.stringify(this.scalarMetrics) + '\n';
+      // Create a timestamp for this scalar metric entry
+      const timestamp = new Date().toISOString();
 
-      // Write to file
-      await fsPromises.appendFile(this.scalarFilePath, line);
+      // Unpack the scalarMetrics object into individual [metric, value] pairs
+      // For example: { norm: 11.4, tokenLength: 128 } → [['norm', 11.4], ['tokenLength', 128]]
+      const entries = Object.entries(this.scalarMetrics.metrics);
+
+      // For each metric, write its value to a separate file
+      await Promise.all(
+        entries.map(async ([metric, value]) => {
+          // Construct the file path using: ioType.metric.modelType.baselineType.scalar.jsonl
+          // Example: input.norm.semantic.rolling.scalar.jsonl
+          const filePath = path.join(
+            OUTPUT_DIR,
+            'scalars',
+            `${this.ioType}.${metric}.${this.modelType}.rolling.scalar.jsonl`
+          );
+
+          // Format the line as a JSONL object with timestamp and single metric
+          const line =
+            JSON.stringify({
+              timestamp,
+              metrics: { [metric]: value },
+            }) + '\n';
+
+          // Append the scalar entry to the file
+          await fsPromises.appendFile(filePath, line);
+        })
+      );
     } catch (error) {
+      // If anything fails (e.g., write error, path issue), log and rethrow
       throw new Error(
         `Error in saveScalarMetrics for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
       );

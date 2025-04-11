@@ -3,6 +3,8 @@ import sys
 sys.dont_write_bytecode = True
 # Import helper function to load and embed the data
 from util import pythonTrainingEmb
+from util.writeSharedScalars import write_shared_scalar_metrics
+
 
 import time
 
@@ -22,6 +24,9 @@ def tkyoDriftSetTraining(data_set_Path, input_name="input", output_name="output"
         "input": input_name,
         "output": output_name,
     }
+    # Call once per I/O type to extract shared scalar metrics
+    for io_type, column_name in IO_TYPES.items():
+        write_shared_scalar_metrics(data_set_Path, io_type, column_name)
 
     # Iterate through models dictionary
     for model_type, model_name in MODELS.items():
