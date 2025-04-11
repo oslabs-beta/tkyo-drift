@@ -14,9 +14,6 @@ let warn = false;
 // Load all filenames in the scalar directory
 const files = fs.readdirSync(SCALAR_DIR);
 
-// TODO: What happens when there are no training files and someone is running in hybrid mode?
-// ? We need to compare the distributions of the first 10000 to the last 1000 from rolling.
-
 // Regex pattern to extract metadata from filenames:
 // Format: ioType.metric.[modelType?].baseline.scalar.jsonl
 const scalarFileRegex =
@@ -30,7 +27,7 @@ for (const file of files) {
   const match = file.match(scalarFileRegex);
 
   if (!match) {
-    console.warn(chalk.yellow(`⚠️ Skipping unrecognized file: ${file}`));
+    console.warn(chalk.yellow(`Skipping unrecognized file: ${file}`));
     continue;
   }
 

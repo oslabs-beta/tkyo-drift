@@ -11,7 +11,7 @@
 
 TKYO Drift is a lightweight, transparent drift tracking library for AI workflows. It embeds I/O Pairs and compares them to a configurable baseline to detect drift in semantic, conceptual, or lexical meaning over time.
 
-At the time of writing, this tool is only able to ingest data from mono modal text generation AI workflows.  
+**At the time of writing, this tool is only able to ingest data from mono modal text generation AI workflows.**  
 
 ## Overview
 
@@ -429,6 +429,18 @@ Waiting is pain, and embedding hundreds of thousands of inputs over and over aga
 Not only that, but there is a vast range of data visualizations that could be made, warning and alerts, recommendations based on what flags are getting triggered, etc. 
 
 This would involve creating a whole front end with user login, a backend API to receive one off calls and a file upload system to receive massive training data files. This would be a fun project in it's own right, but obviously involves cloud server costs to rapidly process embeddings. If you do decide to make a business out of this, give us a call, we would love to help. 
+
+### Multi-Modality
+
+This project is only developed to be able to ingest text data, but there are many AI workflows out there. A future iteration of this project could include text2img, img2img, text2video, img2video, etc. 
+
+Most of the ground work for this is already done, but new embedding models specifically designed for those types of workflows would need to be incorporated, along with file type handling which is missing in the main workflow. (If you pass anything other than text into the main or batch embedding function, they break.)
+
+### More Math
+
+We are currently calculating a number of metrics from both individual vectors as well as populations across the training and rolling data sets. There is room for improvement, however, in that there are additional drift measures such as KL divergence and Earth Movers distance that would be useful to calculate in this workflow. 
+
+It is our opinion that either of these could be added to the tkyoDrift analysis with minimal effort, as the `tkyoDrift` main logic `tkyoDriftSetTraining.py` batch embedding logic both capture scalar metrics for population comparisons already.
 
 ## Contributing
 
