@@ -1,6 +1,13 @@
-TODO: Add a section to readme about embedding max length, tokenization, and silent truncation
+<p align="center">
+  <img src="tkyo-banner.png" width="100%" alt="TKYO Drift Banner">
+</p>
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
+
+![npm](https://img.shields.io/npm/v/tkyoDrift?style=flat-square)
+![license](https://img.shields.io/github/license/oslabs-beta/tkyo-drift?style=flat-square)
+![issues](https://img.shields.io/github/issues/oslabs-beta/tkyo-drift?style=flat-square)
+![last commit](https://img.shields.io/github/last-commit/oslabs-beta/tkyo-drift?style=flat-square)
 
 TKYO Drift is a lightweight, transparent drift tracking library for AI workflows. It embeds I/O Pairs and compares them to a configurable baseline to detect drift in semantic, conceptual, or lexical meaning over time.
 
@@ -9,6 +16,20 @@ At the time of writing, this tool is only able to ingest data from mono modal te
 ## Overview
 
 This tool is designed for performance-critical environments and was designed to be operable in production environments. The tkyoDrift() function can be inserted into a text generation workflow as an asynchronous function to minimize performance impacts in production settings. It operates quasi-locally with Python dependencies using the a JS transformers library to support both real-time logging of new I/O data, and batch ingestion of I/O training data. Drift is tracked via cosine similarity against baselines, and stored in compact binary files.
+
+## Table of Contents
+- [Overview](#overview)
+- [Drift Analysis Flow](#drift-analysis-flow)
+- [Installation](#how-do-you-install-this-thing)
+- [Usage](#how-do-you-use-this-thing)
+- [One-off Ingestion](#one-off-ingestion)
+- [Training Ingestion](#training-ingestion)
+- [Logging](#logging)
+- [CLI Tools](#cli-tools)
+- [Architecture](#architecture)
+- [The Math](#the-math)
+- [Scalar Metrics](#scalar-metrics)
+- [Future Iterations](#future-iterations)
 
 ## Drift Analysis Flow
 
@@ -27,19 +48,41 @@ For each individual input and output, the following workflow is executed in roug
 Note that the size of input/output text, embedding dimensions, and how many embedding models are chosen will influence the speed of the workflow. Regardless, if tkyoDrift() is called asynchronously, it should not impact your workflow unless you expect a sustained high volume of user inputs per second.
 ```
 # How do you install this thing?
+TODO: Update this when the NPM package is built.
 
-TODO: Add an install section
+1. Install the NPM package:
+```bash
+npm install tkyoDrift
+```
+2. Import tkyoDrift into your AI workflow pages:
+```js
+import tkyoDrift from tkyoDrift
+```
+3. Add an async function call to the tkyoDrift main function passing in your I/O pair:
+```js
+...
+async tkyoDrift(userinput, aioutput)
+... 
+```
+4. Enjoy the benefits of having drift detection:
+```
+🏎️☁️☁️☁️ <- THIS GUY IS DRIFTING
+```
 
 # How do you use this thing?
 
-You can interact with this library in 3 ways; 
+You can interact with this library in 4 ways; 
 - Dispatch a one-off I/O pair to `tkyoDrift()`
 - Dispatch sequential training data through a batch upload to `tkyoDriftSetTraining()`*
-- Request a CLI print out of the log's summary using `npx tkyoDrift -#` (where # is a number of days) TODO: Update this when the NPM package is built.
+- Request a CLI print out of the log's summary using `npx tkyoDrift -#` (where # is a number of days) 
+- Export the logs into your Data Viz platform
 
 ```
 * Do this from a strong PC, and then copy your data into the appropriate folders. Due to a number of factors (I/O Length, CUDA access, memory, cpu cores, training data size) this process can take an exceptionally long time to complete.
 ```
+
+There is also a small training file downloader script in the util folder called downloadTrainingData.py that you can run to grab the training data from hugging face if you happen to be using a model for your workflow from there.
+
 ## One-off Ingestion
 
 `tkyoDrift.js(input, output, depth)` handles individual I/O pairs for drift comparison. It:
@@ -92,7 +135,7 @@ ID, DEPTH, TIMESTAMP, I/O TYPE, SEMANTIC ROLLING EUC, SEMANTIC TRAINING EUC, CON
 ```
 Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your lexical model from "lexical" to "linguistic" when writing to the log, the makeLogEntry method of the Drift Class would work, but the log Parser would fail. 
 
-Keep in mind, however, you can change models any time you like, though that will brick drift calculations for a different reason; your inputs/outputs we be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
+Keep in mind, however, you can change models any time you like, though that will brick drift calculations for a different reason; your inputs/outputs will be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
 ```
 
 ## CLI Tools
@@ -100,6 +143,8 @@ Keep in mind, however, you can change models any time you like, though that will
 TODO: Add the command we need people to enter to trigger this log here after the NPM package is built.
 
 ### `printLogCLI.js`
+
+![An image of the print log CLI tool's output, displaying the average cosine similarity across a range of input types, drift types, and baseline types. For example, the input IO Type for the rolling baseline data for the semantic embedding model displays an average cosine similarity of 1, or no semantic drift. ](printLogCLI.png)
 
 Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
@@ -111,7 +156,9 @@ If this bothers you, you can remove line 2 from the COS and EUC logs after you u
 
 ### `printScalarCLI.js`
 
-Parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
+![An image of the print Scalar CLI tool's output, displaying metric comparisons between the training and rolling baseline values. For example, avgWordLength for inputs has a mean of 4.82 characters in the training data, but a mean of 4.49 characters in the rolling data, leading to a mean delta of -0.34, and a PSI value of 0.017 which represents stable populations between the two. ](printScalarCLI.png)
+
+This tool parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
 The scalar metrics the system is currently tracking are listed below:
 
@@ -136,8 +183,17 @@ Note: Without batch embedding your training data, you will be unable to view sca
 TKYO Drift uses remote embedding models on HuggingFace.co for inference using the Xenova Transformers library in javascript or the python native hugging face library in python. By default, the system operates in JavaScript using a lightweight transformer pipeline, with Python scripts injected as required to improve speed when performing batched operations. The python equivalent embedding pipeline allows for CPU usage by default if your system has the appropriate CUDA drivers.
 
 - `all-MiniLM-L12-v2`: Used for semantic drift or changes in tone or communication style.
+
+  https://huggingface.co/Xenova/all-MiniLM-L12-v2
+
 - `e5-base`: Used for concept drift or changes in topic or intent.
+
+  https://huggingface.co/Xenova/e5-base
+
 - `all-MiniLM-L6-v2`: Used for lexical drift or changes in word choice.
+
+  https://huggingface.co/Xenova/all-MiniLM-L6-v2
+
 
 Note that while L6 is a subset of L12, it is also the case that lexical drift is a subset of semantic drift. This model can be disabled if you believe that MiniLM-L12 is comprehensive enough to provide drift tracking for both types. This speeds up one-off and batched operations by about 10%.
 
@@ -206,7 +262,14 @@ Scalar files are negligibly large, and even with 1 million records, they should 
 ```
 The rolling files have no upper limit on their size, and will require manual pruning eventually depending on your workflow's throughput. Incidentally, if you do not have access to your training data (you may be using a 3rd party model without a published data set) you may benefit from renaming your rolling files to training files after you have accumulated 10,000 entries.
 ```
-TODO: We should probably explain which files exist and why, and as an extension what happens to the system where there isn't a training file to pull data from. This might not need to go here, in the read me, but it should be close to the hybrid mode section.
+
+***Write operations are done primarily to the rolling file set, as training files are explicitly and intentionally excluded from write operations outside of the batched training embedding pipeline.***
+
+This intentional decision reflects the nature that training datasets represent a fixed point in time, and should not be modified after being ingested. Throughout this codebase, there are checks for a model's baseline type, and if that baseline is set to `training', write operations are skipped.
+
+As a way of making this system work where there is no training data provided, the system will attempt to use hybrid mode as several models use the rolling file path locations as replacements for the training file paths. 
+
+In hybrid mode, because the first N vectors are considered training vectors, and the last K vectors are considered rolling vectors, there will be a duration of time that training and rolling datasets will be equivalents. For example, when the system only contains 1500 vectors, all 1500 will be considered `training` (training defaults are first 10,000) and the most recent 1000 would be considered `rolling`.
 
 ### IO Write/Read Methods
 
@@ -263,6 +326,66 @@ Notably, this is a tradeoff between accuracy and speed, as KMeans cluster analys
 
 This system uses `(num_of_clusters = int(np.sqrt(num_vectors / 2)))` to determine the number of clusters to generate, as we do not have the ability to use the elbow method to determine the proper value for K.
 
+## Scalar Metrics
+
+In addition to vector-based drift (cosine similarity and Euclidean distance), TKYO Drift also tracks **scalar metrics**—individual numerical features extracted from the raw text of your inputs and outputs. These scalar values help capture shifts in text structure, tone, or complexity that may not be reflected in semantic embeddings.
+
+Scalar metrics are only compared when a **training baseline** is available. Without this baseline, we cannot evaluate how the distribution of scalar values has changed over time.
+
+### How Are They Calculated?
+
+Each metric is computed as follows:
+
+- `norm`: L2 norm (vector magnitude) from the output embedding.
+- `textLength`: Length of the raw string.
+- `tokenLength`: Number of tokens from the model tokenizer.
+- `entropy`: Shannon entropy over character frequencies.
+- `avgWordLength`: Mean word length based on whitespace splitting.
+- `punctuationDensity`: `punctuation_count / total_chars`.
+- `uppercaseRatio`: `uppercase_count / total_chars`.
+
+These are implemented in both JS (for rolling ingestion) and Python (for training ingestion) and saved alongside vector data.
+
+### What Do They Tell Us?
+
+Scalar metrics help detect **non-semantic drift**. For example:
+
+- A spike in `uppercaseRatio` may indicate aggressive or stylized tone.
+- A drop in `entropy` could mean the system is outputting simpler or repetitive responses.
+- A change in `tokenLength` may point to output truncation or verbosity.
+
+In general, scalar drift reveals changes in *how* your model or users are communicating, not just *what* it's communicating.
+
+### Comparison Logic
+
+Drift is measured by comparing the **mean** and **standard deviation** of each metric between the training and rolling baselines.
+
+For each metric:
+```
+meanDelta = rollMean - trainMean
+stdDelta  = rollStd  - trainStd
+```
+These deltas are printed in the CLI printout with color-coded thresholds (green/yellow/red) to indicate severity.
+
+### PSI Values (Population Stability Index)
+
+TKYO Drift calculates the **Population Stability Index (PSI)** for all scalar metrics when comparing rolling data against the training baseline. PSI quantifies how much a distribution has shifted over time, and is commonly used in production monitoring to detect silent model degradation.
+
+For each scalar metric, the PSI score is computed using pre-defined bins and normalized frequency distributions from both the rolling and training datasets.
+
+The PSI interpretation follows standard thresholds:
+
+| PSI Value | Interpretation                  |
+|-----------|---------------------------------|
+| < 0.1     | No significant drift            |
+| 0.1–0.25  | Moderate shift; monitor closely |
+| > 0.25    | Major shift; likely model drift |
+
+These scores are included in the CLI drift output and provide a statistically grounded way to monitor changes in features like entropy, token length, or word complexity — even if the semantic embeddings remain stable.
+
+TKYO Drift uses this in tandem with mean and standard deviation deltas to give a robust picture of scalar drift.
+
+
 # Future Iterations
 
 For this project there are a number of ways this platform could be made better, including:
@@ -271,9 +394,9 @@ For this project there are a number of ways this platform could be made better, 
 
 The rolling file currently uses a fixed number of records when loaded during the readFromBin method on the DriftModel class, this fixed number may not be a flexible enough method of selecting the number of records to compare for rolling drift. It would be an improvement to modify this so that it uses entries from the last N days instead. 
 
-Building this would require adding a data to the binary file write method to store when a file was added, or replacing the binary file writer entirely and switching to a different file storage format. Regardless, at the time of this readme writeup, there is no date associated with stored vectors and so there is no way to have the rolling file use the last N days of records instead of a fixed count.
+Building this would require adding a date to the binary file write method to store when a file was added, or replacing the binary file writer entirely and switching to a different file storage format. Regardless, at the time of this readme writeup, there is no date associated with stored vectors and so there is no way to have the rolling file use the last N days of records instead of a fixed count.
 
-### Rolling Data Selection
+### Picking a better K value
 
 The current implementation sets K using a heuristic: K = int(sqrt(num_vectors / 2)), which balances clustering granularity with speed. While the elbow method offers a more statistically grounded way to choose K by evaluating clustering performance across several K values, it is computationally intensive.
 
@@ -289,6 +412,46 @@ Resolving this would require a major refactor of the calculation of drift metric
 
 This project was initially built as a pure javascript project to enable wider deployment, but various functions and libraries were originally built, and intended to be used in python. As a result, this project was refactored after an initial test build to include a javascript pipeline for individual embeddings and a python version for batched embeddings.
 
-What this means is that the tkyoDriftSetTraining.py file and the tkyoDrift.js processes are functionally duplicates of each other with the exception that the former is explicitly meant to be called once for a batch, while the later is meant to be invoked on every new input.
+What this means is that the tkyoDriftSetTraining.py file and the tkyoDrift.js processes are functionally duplicates of each other except that the former is explicitly meant to be called once for a batch, while the later is meant to be invoked on every new input.
 
 This is fine as it is, but since many javascript libraries are just python scripts wearing a disguise, it would be ideal to rebuild this entire platform in python with a javascript NPM package to install it, and a javascript function hook to pass data into it. This would allow this system to avoid unnecessary conversion from javascript into python to execute AI embeddings, calculate K means, or generate the HNSW index.
+
+### PSI Logging
+
+At the time of writing, this project does not log PSI values to a csv file. This means that while PSI values are calculated on demand using the `printScalarCLI.js`, there are no exportable scalar metrics for external data visualization tools.
+
+Fixing this would involve adding a cronjob to compare scalar metrics on an interval, or adding a counter of some sort and triggering a scalar comparison every N (10? 100?) new inputs. If the output of this comparison is sent to a log instead of the CLI, it would be consumable by external tools.
+
+### Cloud Based embedding services
+
+Waiting is pain, and embedding hundreds of thousands of inputs over and over again can take a long time. Not to mention that larger models take up a ton of space (1 mill I/Os is like 20 gbs). This whole platform could be a paid service where people upload their I/Os and you keep their embeddings remotely.
+
+Not only that, but there is a vast range of data visualizations that could be made, warning and alerts, recommendations based on what flags are getting triggered, etc. 
+
+This would involve creating a whole front end with user login, a backend API to receive one off calls and a file upload system to receive massive training data files. This would be a fun project in it's own right, but obviously involves cloud server costs to rapidly process embeddings. If you do decide to make a business out of this, give us a call, we would love to help. 
+
+## Contributing
+
+We welcome contributions, ideas, and pull requests!  
+If you’d like to improve TKYO Drift, feel free to fork the repo and submit a PR.
+
+Before getting started, check out any open issues and see if you can help.  
+If you'd like to propose a feature, feel free to open a discussion or ticket.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Acknowledgments
+
+Built with blood sweat and tears by the TKYO Drift team:
+
+Milti, Wing, Monique, Chris and Anthony
+
+Check out our other projects and send us a message if you would like to collaborate.
+
+Big thanks to the folks behind:
+- [Hugging Face Transformers](https://huggingface.co)
+- [Xenova Transformers](https://xenova.github.io/)
+- [Open Source Labs](https://github.com/oslabs-beta)
+- [Codesmith](https://www.codesmith.io/)

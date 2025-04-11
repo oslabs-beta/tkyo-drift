@@ -5,7 +5,7 @@ import { OUTPUT_DIR } from '../tkyoDrift.js';
 // * Logs a structured error entry to a CSV in the data folder
 export default function makeErrorLogEntry(error) {
   // Build path to error log
-  const logPath = path.join(OUTPUT_DIR, 'ERR_log.csv');
+  const logPath = path.join(OUTPUT_DIR, 'logs', 'ERR_log.csv');
 
   // Create a timestamp for when the error occurred
   const timestamp = new Date().toISOString();
@@ -15,10 +15,9 @@ export default function makeErrorLogEntry(error) {
 
   // Build a single error row
   // We stringify each field to handle commas, quotes, or newlines
-  const row = [
-    timestamp,
-    JSON.stringify(error.message || 'Unknown error'),
-  ].join(',') + '\n';
+  const row =
+    [timestamp, JSON.stringify(error.message || 'Unknown error')].join(',') +
+    '\n';
 
   // Check if the file exists already
   const fileExists = fs.existsSync(logPath);
