@@ -7,17 +7,20 @@ import { loadScalarMetrics } from './loadScalarMetrics.js';
 
 // Define the path to where scalar .jsonl files are stored
 const SCALAR_DIR = path.join('data', 'scalars');
-console.log(chalk.gray(`\n📂 Scanning scalar directory: ${SCALAR_DIR}\n`));
+
+// Define warning boolean to console log a warning if we are in hybrid mode
+let warn = false;
 
 // Load all filenames in the scalar directory
 const files = fs.readdirSync(SCALAR_DIR);
 
-// TODO: What happens when there are no training files and someone is running in hybrid mode? 
+// TODO: What happens when there are no training files and someone is running in hybrid mode?
 // ? We need to compare the distributions of the first 10000 to the last 1000 from rolling.
 
 // Regex pattern to extract metadata from filenames:
 // Format: ioType.metric.[modelType?].baseline.scalar.jsonl
-const scalarFileRegex = /^([a-z]+)\.([a-zA-Z]+)(?:\.([a-zA-Z]+))?\.(training|rolling)\.scalar\.jsonl$/;
+const scalarFileRegex =
+  /^([a-z]+)\.([a-zA-Z]+)(?:\.([a-zA-Z]+))?\.(training|rolling)\.scalar\.jsonl$/;
 
 // Container to group scalar file pairs (training + rolling) by metric/io/model
 const matchedPairs = new Map();
@@ -67,26 +70,59 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
   const table = new Table({
     head: [
       chalk.bold.white('Metric'),
-      chalk.bold.white('Train μ'),    // Mean of training data
-      chalk.bold.white('Roll μ'),     // Mean of rolling data
-      chalk.bold.white('Δ Mean'),     // Difference in means
-      chalk.bold.white('Train σ'),    // Standard deviation of training data
-      chalk.bold.white('Roll σ'),     // Standard deviation of rolling data
-      chalk.bold.white('Δ Std'),      // Difference in std deviation
-      chalk.bold.white('PSI'),        // Population stability index
+      chalk.bold.white('Train μ'), // Mean of training data
+      chalk.bold.white('Roll μ'), // Mean of rolling data
+      chalk.bold.white('Δ Mean'), // Difference in means
+      chalk.bold.white('Train σ'), // Standard deviation of training data
+      chalk.bold.white('Roll σ'), // Standard deviation of rolling data
+      chalk.bold.white('Δ Std'), // Difference in std deviation
+      chalk.bold.white('PSI'), // Population stability index
     ],
   });
 
   // Step 4: For each metric in this group, calculate drift values
   for (const [metric, pair] of Object.entries(metricsObj)) {
-    if (!pair.training || !pair.rolling) {
-      console.log(chalk.dim(`⏭ Skipping incomplete pair: ${metric} (Do you have training data?)`));
-      continue;
-    }
+    let training;
+    let rolling;
 
-    // Load values from each file
-    const training = await loadScalarMetrics([metric], ioType, 'training', modelType === 'shared' ? null : modelType);
-    const rolling = await loadScalarMetrics([metric], ioType, 'rolling', modelType === 'shared' ? null : modelType);
+    // If we do not have a pair, we are using HYBRID MODE, and this will use both the rolling files for the training/rolling data
+    if (!pair.training || !pair.rolling) {
+      // Set the warning to true
+      warn = true;
+
+      training = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'rolling',
+        modelType === 'shared' ? null : modelType,
+        // hybrid mode is true here
+        true
+      );
+      rolling = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'rolling',
+        modelType === 'shared' ? null : modelType,
+        // but not here
+        false
+      );
+    } else {
+      // If we do have a matched pair, we will use regular mode, and this will use the training and rolling files respectively.
+      training = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'training',
+        modelType === 'shared' ? null : modelType
+        // hybrid mode is false here
+      );
+      rolling = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'rolling',
+        modelType === 'shared' ? null : modelType
+        // and also here
+      );
+    }
 
     // Compare statistical distributions (mean/std)
     const drift = compareScalarDistributions(training, rolling);
@@ -98,12 +134,12 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
     // Push the computed values to the table
     table.push([
       metric,
-      formatDelta(drift[metric].trainMean),
-      formatDelta(drift[metric].rollMean),
-      formatDelta(drift[metric].meanDelta),
-      formatDelta(drift[metric].trainStd),
-      formatDelta(drift[metric].rollStd),
-      formatDelta(drift[metric].stdDelta),
+      format(drift[metric].trainMean),
+      format(drift[metric].rollMean),
+      formatDelta(drift[metric].meanDelta, drift[metric].trainStd),
+      format(drift[metric].trainStd),
+      format(drift[metric].rollStd),
+      formatDelta(drift[metric].stdDelta, drift[metric].trainStd),
       formatPSI(drift[metric].psi),
     ]);
   }
@@ -116,22 +152,32 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
   }
 }
 
-// Helper to color code delta values by severity
-function formatDelta(val) {
+// Helper to color code regular values
+function format(val) {
   if (typeof val !== 'number') return chalk.gray('n/a');
   const formatted = val.toFixed(2);
-  if (Math.abs(val) < 0.1) return chalk.green(formatted);  // Safe
-  if (Math.abs(val) < 0.5) return chalk.yellow(formatted); // Caution
-  return chalk.red(formatted);                             // Drifted
+  return chalk.white(formatted);
+}
+
+// Helper to color code delta values by severity
+function formatDelta(val, std) {
+  if (typeof val !== 'number') return chalk.gray('n/a');
+  const formatted = val.toFixed(2);
+
+  const z = Math.abs(std > 0 ? val / std : 0);
+
+  if (Math.abs(z) < 1) return chalk.green(formatted); // Safe
+  if (Math.abs(z) < 2) return chalk.yellow(formatted); // Caution
+  return chalk.red(formatted); // Drifted
 }
 
 // Helper to color code PSI values by severity
 function formatPSI(val) {
   if (typeof val !== 'number') return chalk.gray('n/a');
   const formatted = val.toFixed(3);
-  if (val < 0.1) return chalk.green(formatted);    // No significant change
-  if (val < 0.25) return chalk.yellow(formatted);  // Moderate change
-  return chalk.red(formatted);                     // Major drift
+  if (val < 0.1) return chalk.green(formatted); // No significant change
+  if (val < 0.25) return chalk.yellow(formatted); // Moderate change
+  return chalk.red(formatted); // Major drift
 }
 
 // -------------<< SAMPLE COUNT FOOTER >>-------------
@@ -152,9 +198,7 @@ for (const ioType of ['input', 'output']) {
   const trainingFile = files.find(
     (f) => isShared(f) && f.includes('.training.')
   );
-  const rollingFile = files.find(
-    (f) => isShared(f) && f.includes('.rolling.')
-  );
+  const rollingFile = files.find((f) => isShared(f) && f.includes('.rolling.'));
 
   // Read the number of lines for the training baseline
   if (trainingFile) {
@@ -179,6 +223,13 @@ for (const ioType of ['input', 'output']) {
 const totalTrain = trainingCount.input + trainingCount.output;
 const totalRoll = rollingCount.input + rollingCount.output;
 
+if (warn) {
+  console.log(
+    chalk.gray(
+      `Running in hybrid mode: Using first 10k rolling as training data. (Do you have training data?)`
+    )
+  );
+}
 // Display results as a final CLI footer line
 console.log(
   chalk.gray(
