@@ -12,6 +12,9 @@ console.log(chalk.gray(`\n📂 Scanning scalar directory: ${SCALAR_DIR}\n`));
 // Load all filenames in the scalar directory
 const files = fs.readdirSync(SCALAR_DIR);
 
+// TODO: What happens when there are no training files and someone is running in hybrid mode? 
+// ? We need to compare the distributions of the first 10000 to the last 1000 from rolling.
+
 // Regex pattern to extract metadata from filenames:
 // Format: ioType.metric.[modelType?].baseline.scalar.jsonl
 const scalarFileRegex = /^([a-z]+)\.([a-zA-Z]+)(?:\.([a-zA-Z]+))?\.(training|rolling)\.scalar\.jsonl$/;
@@ -70,7 +73,7 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
       chalk.bold.white('Train σ'),    // Standard deviation of training data
       chalk.bold.white('Roll σ'),     // Standard deviation of rolling data
       chalk.bold.white('Δ Std'),      // Difference in std deviation
-      chalk.bold.white('PSI'),        // PSI Value (low is good)
+      chalk.bold.white('PSI'),        // Population stability index
     ],
   });
 

@@ -58,9 +58,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # This prevents the creation of gradients
     @torch.no_grad()
-    # TODO: This section effectively means we are only embedding the first 512 tokens, and all data thereafter is lost
-    # ! Should be ok for most AI workflows, but this will be a problem for ones that take large text inputs
- 
+
     # When invoked, this will embed the current batch
     def embed_data(data):
         # Stores texts shorter than 512 tokens
