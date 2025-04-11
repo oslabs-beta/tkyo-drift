@@ -70,14 +70,14 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
       chalk.bold.white('Train σ'),    // Standard deviation of training data
       chalk.bold.white('Roll σ'),     // Standard deviation of rolling data
       chalk.bold.white('Δ Std'),      // Difference in std deviation
-      chalk.bold.white('PSI'),        // 
+      chalk.bold.white('PSI'),        // PSI Value (low is good)
     ],
   });
 
   // Step 4: For each metric in this group, calculate drift values
   for (const [metric, pair] of Object.entries(metricsObj)) {
     if (!pair.training || !pair.rolling) {
-      console.log(chalk.dim(`⏭ Skipping incomplete pair: ${metric}`));
+      console.log(chalk.dim(`⏭ Skipping incomplete pair: ${metric} (Do you have training data?)`));
       continue;
     }
 

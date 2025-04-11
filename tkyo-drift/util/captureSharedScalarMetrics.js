@@ -1,12 +1,10 @@
-import fs from 'fs/promises';
+import fsPromises from 'fs/promises';
+import fs from 'fs';
 import path from 'path';
 import { OUTPUT_DIR } from '../tkyoDrift.js';
 
 // Calculates the shared scalar values for a given input/output pair
-export default async function captureSharedScalarMetrics(
-  input,
-  output,
-) {
+export default async function captureSharedScalarMetrics(input, output) {
   const timestamp = new Date().toISOString();
 
   const sharedMetrics = {
@@ -18,14 +16,22 @@ export default async function captureSharedScalarMetrics(
   await Promise.all(
     Object.entries(sharedMetrics).flatMap(([ioType, metricSet]) => {
       return Object.entries(metricSet).map(([metric, value]) => {
+        // Construct the file path
         const filePath = path.join(
           OUTPUT_DIR,
           'scalars',
           `${ioType}.${metric}.rolling.scalar.jsonl`
         );
+
+        // Ensure the parent directory exists, not the file itself
+        const dirPath = path.dirname(filePath);
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
+
         const line =
           JSON.stringify({ timestamp, metrics: { [metric]: value } }) + '\n';
-        return fs.appendFile(filePath, line);
+        return fsPromises.appendFile(filePath, line);
       });
     })
   );
