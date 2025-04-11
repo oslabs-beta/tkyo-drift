@@ -279,6 +279,7 @@ export class DriftModel {
           // Assign the average of all distances from centroids to the distance
           this.distance =
             // Since distance is null occasionally, we only assign if it isn't
+            // ! Python is not returning typed arrays currently, so we do not need to check for instance of float32Array
             Array.isArray(distances) && distances.length > 0
               ? distances.reduce((sum, val) => sum + val, 0) / distances.length
               : null;
@@ -297,11 +298,13 @@ export class DriftModel {
   getBaseline() {
     try {
       // Check to make sure the vectorArray was correctly set in readFromBin
+      // ! Python is not returning typed arrays currently, so we do not need to check for instance of float32Array
       if (!Array.isArray(this.vectorArray) || this.vectorArray.length === 0) {
         throw new Error('Baseline vectorArray is missing or empty.');
       }
 
       // Validate the structure of the vector array before attempting to reduce it
+      // ! Python is not returning typed arrays currently, so we do not need to check for instance of float32Array
       if (!Array.isArray(this.vectorArray[0])) {
         throw new Error('Baseline vectorArray is not an array of arrays.');
       }
