@@ -36,6 +36,11 @@ export class DriftModel {
 
       // Assemble the embedding file path (.bin file)
       const vectorPath = path.join(OUTPUT_DIR, 'vectors', `${baseName}.bin`);
+      const vectorKmeansPath = path.join(
+        OUTPUT_DIR,
+        'vectors',
+        `${baseName}.kmeans.bin`
+      );
       const fallbackPath = path.join(
         OUTPUT_DIR,
         'vectors',
@@ -43,10 +48,16 @@ export class DriftModel {
       );
 
       // Use rolling file path if there is no training data.
-      // ? ctrl+f the README for hybrid mode if you want to know why
-      this.embeddingFilePath = fs.existsSync(vectorPath)
+      this.embeddingFilePath = fs.existsSync(vectorKmeansPath)
+        ? vectorKmeansPath
+        : fs.existsSync(vectorPath)
         ? vectorPath
         : fallbackPath;
+
+      // ? ctrl+f the README for hybrid mode if you want to know why
+      // this.embeddingFilePath = fs.existsSync(vectorPath)
+      //   ? vectorPath
+      //   : fallbackPath;
 
       // 2. Scalar metric path (.scalar.jsonl)
       this.scalarFilePath = path.join(
@@ -241,6 +252,7 @@ export class DriftModel {
           this.modelType,
           JSON.stringify(Array.from(this.embedding)),
           this.baselineType,
+          this.embeddingFilePath
         ]);
 
         let result = '';

@@ -15,7 +15,7 @@ import sys
 # Allow error logging for testing purposes
 import traceback
 
-def HNSW(io_type, model_type, query, baseline_type):
+def HNSW(io_type, model_type, query, baseline_type, file_path):
 
     # Parse the JSON query string into a numpy array
     try:
@@ -60,28 +60,17 @@ def HNSW(io_type, model_type, query, baseline_type):
             return reshaped_data, num_vectors, dims
 
     # TODO: These paths are relative from their execution directory, so this may not work in production
-    # Define file paths
-    kmeans_file = f"data/kmeans/{model_type}.{io_type}.{baseline_type}.kmeans.bin"
-    data_file = f"data/vectors/{model_type}.{io_type}.{baseline_type}.bin"
-    # after setting our filepaths, we check if the path doesn't exist and the baseline type is training. since kmeans gets used first, this will only matter when there isn't training data at all.
-    if (baseline_type == 'training' and not os.path.exists(data_file)):
-         data_file = f"data/vectors/{model_type}.{io_type}.rolling.bin"
-    
-    # Check if the kmeans file exists, otherwise use training
-    if os.path.exists(kmeans_file):
-        data, num_vectors, dims = load_embeddings(kmeans_file)
-    elif os.path.exists(data_file):
-        data, num_vectors, dims = load_embeddings(data_file)
+     data, num_vectors, dims = load_embeddings(file_path)
         if (num_vectors < 10):
             return {
                 "centroids": data.tolist(),
                 "distances": None,
             }
     else:
-        raise FileNotFoundError(f"Neither {kmeans_file} nor {data} found!")
+        raise FileNotFoundError(f"Neither {file_path} nor {data} found!")
 
     # Set number of neighbors (k) based on dataset type
-    if os.path.exists(kmeans_file):
+    if "kmeans" in file_path:
         # Use single centroid for kmeans data
         k = 1
     else:
@@ -128,7 +117,7 @@ def HNSW(io_type, model_type, query, baseline_type):
 # Checks that the file is run directly, not as an import
 if __name__ == "__main__":
     # Error handling to check that there are 3 arguments and 1 script
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         # Print the error
         print(
             json.dumps(
@@ -140,7 +129,7 @@ if __name__ == "__main__":
         sys.exit(1)
     try:
         # assign the value of result to the evaluated result of invoking HNSW with the 3 input arguments
-        result = HNSW(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+        result = HNSW(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
         # Returns the value of result to javascript file
         print(json.dumps(result))
         # Catch all error handling
