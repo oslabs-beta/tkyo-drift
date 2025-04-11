@@ -63,7 +63,10 @@ def HNSW(io_type, model_type, query, baseline_type):
     # Define file paths
     kmeans_file = f"data/kmeans/{model_type}.{io_type}.{baseline_type}.kmeans.bin"
     data_file = f"data/vectors/{model_type}.{io_type}.{baseline_type}.bin"
-
+    # after setting our filepaths, we check if the path doesn't exist and the baseline type is training. since kmeans gets used first, this will only matter when there isn't training data at all.
+    if (baseline_type == 'training' and not os.path.exists(data_file))
+         data_file = f"data/vectors/{model_type}.{io_type}.rolling.bin"
+    
     # Check if the kmeans file exists, otherwise use training
     if os.path.exists(kmeans_file):
         data, num_vectors, dims = load_embeddings(kmeans_file)
