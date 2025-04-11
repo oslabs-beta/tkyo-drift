@@ -43,17 +43,21 @@ def HNSW(io_type, model_type, query, baseline_type):
                 print(f"⚠️ But only {len(data)} floats were read", file=sys.stderr)
                 raise ValueError("Data is incorrect - size mismatch")
 
+            reshaped_data = data.reshape(num_vectors, dims)
             # Check to make sure this is not the first write AND remove the new entry for the rolling dataset
             if baseline_type == 'rolling' and num_vectors != 1:
-                data = data[:-1]
             # Keep only the most recent 1,000 entries when we are reading from rolling.
-                data = data[-1000:]
+                reshaped_data = reshaped_data[-1000:-1]
+
             # If we're in training, we'll only read the most recent 10,000. This will not cause problems with existing training data sets greater than that amount because anything 10,000 and above will receive k-means clustering. In this case we'll be reading from the rolling file, which can get infinitely large, theoretically.
             elif baseline_type == 'training':
-                data = data[:10000]
+                reshaped_data = reshaped_data[:10000]
+            
+            # Set num vectors equal to the actual number we pulled from the reshaped data
+            num_vectors = len(reshaped_data)
                 
             # Returns the vectors from the binary file
-            return data.reshape(num_vectors, dims), num_vectors, dims
+            return reshaped_data, num_vectors, dims
 
     # TODO: These paths are relative from their execution directory, so this may not work in production
     # Define file paths

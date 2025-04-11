@@ -68,6 +68,7 @@ IMPORTANT! The set training data file should ONLY be run when you intend on repl
 
 <<< There should only be ONE set of ideal embeddings for your training data. >>>
 ``` 
+As an additional note, you will see a console log warning that inputs exceeding 512 tokens will result in indexing errors. This is accounted for in the embedding process, and all inputs over 512 tokens will return the average vector of each 512 token chunk.
 
 ## Logging
 
