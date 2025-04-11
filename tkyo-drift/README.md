@@ -1,45 +1,4 @@
-
-TODO: We should mention that the rolling is using a fixed number, but a switch use use date filtering would be a good iteration project, though it would require modifying the binary storage to include a date alone with every vector.
-
-TODO: Add an explanation for why the first value will never show drift
-
-TODO: Add an install section
-
-TODO: Add section to readme about how to determine the amount of clusters in pythonKMeans.py (num_of_clusters = int(np.sqrt(num_vectors / 2)))
-
 TODO: Add a section to readme about embedding max length, tokenization, and silent truncation
-
-TODO: Changing embedding model names (for example, from 'lexical' to 'bagOfWords') will brick the log. Warn the people.
-
-TODO: Explain limitations of the depth counter and why its only a partial solution.
-
-TODO: We are currently using a Xenova and Hugging Face transformers library split, with xenova in JS (one offs) and HF in PY (batched calls w/ CUDA). We need to explain why we are doing this. As a side note, Xenova IS huggingFace, but not maintained by hugging face, its just the JS version of HF's python library maintained by Xenova
-
-TODO: We need to mention that the rolling file will expand infinity, and should be deleted occasionally.
-
-TODO: We need to remove references to First N vs Last N in training/rolling. Wait a minute... if there is no training data, do we still want to use the rolling files? If yes, do we need to set an upper limit on the first 10k in rolling to represent the training data? That functionality is not in this code at the moment.
-
-TODO: We should probably mention that pythonTrainingEmb.py is a functional duplicate/stripped down version of tkyoDrift because it does all the same things but in batches?
-
-TODO: Add a warning about training batch embedding times, and how slow it is without a graphics card.
-
-TODO: We should add some advice that running tkyoDriftSetTraining.py should be done in a dev environment, and then the data should be moved into the production data folder.
-
-TODO: The file size warning should be updated to include estimates for the log and scalar files.
-
-TODO: We need a dictionary of what each metric displays: Cosine Similarity ranges, EUC distances & norm drift (same thing, but compared diff), textLength drift
-
-| Metric               | Description                                                   |
-|----------------------|---------------------------------------------------------------|
-| `norm`               | Vector magnitude (captures changes in embedding length/energy)|
-| `textLength`         | Raw character count of the input/output text                  |
-| `tokenLength`        | Number of tokens (based on model tokenizer)                   |
-| `entropy`            | Character-level entropy (measures information density)        |
-| `avgWordLength`      | Average word length (indicates language complexity)           |
-| `punctuationDensity`| Ratio of punctuation to characters (captures tone/stylistics) |
-| `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)     |
-
-TODO: In order to run the python hook, they need to spawn a child process to send in our training data. Tell the people
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift) 
 
@@ -53,30 +12,34 @@ This tool is designed for performance-critical environments and was designed to 
 
 ## Drift Analysis Flow
 
-For each individual input and output, the following workflow is executed in roughly ~500ms. 
+For each individual input and output, the following workflow is executed in roughly 800ms. 
 
 1. Generate embeddings for both input and output.
 2. Save them to `.bin` files (except for training mode).
 3. Load historical vectors from disk.
 4. Compute baseline vectors as an average of past embeddings.
 5. Calculate cosine similarity.
-6. Append results to `drift_log.csv`.
+6. Calculate euclidean distance.
+7. Capture scalar metrics.
+6. Append results to `COS_log.csv`, `EUC_log.csv`, and scalar metric files.
 
 ```
 Note that the size of input/output text, embedding dimensions, and how many embedding models are chosen will influence the speed of the workflow. Regardless, if tkyoDrift() is called asynchronously, it should not impact your workflow unless you expect a sustained high volume of user inputs per second.
 ```
 # How do you install this thing?
 
-
-
+TODO: Add an install section
 
 # How do you use this thing?
 
 You can interact with this library in 3 ways; 
 - Dispatch a one-off I/O pair to `tkyoDrift()`
-- Dispatch sequential training data through a batch upload to `tkyoDriftSetTraining()`
-- Request a CLI print out of the log's summary using `npx tkyoDrift -#` (where # is a number)
+- Dispatch sequential training data through a batch upload to `tkyoDriftSetTraining()`*
+- Request a CLI print out of the log's summary using `npx tkyoDrift -#` (where # is a number of days) TODO: Update this when the NPM package is built.
 
+```
+* Do this from a strong PC, and then copy your data into the appropriate folders. Due to a number of factors (I/O Length, CUDA access, memory, cpu cores, training data size) this process can take an exceptionally long time to complete.
+```
 ## One-off Ingestion
 
 `tkyoDrift.js(input, output, depth)` handles individual I/O pairs for drift comparison. It:
@@ -86,7 +49,8 @@ You can interact with this library in 3 ways;
 - Embeds serially using as many models as you specify.
 - Appends to the rolling data file (only).
 - Reads from the file to load a baseline for comparison.
-- Computed the drift score using cosine similarity.
+- Computes the drift score using cosine similarity.
+- Assign a unique ID hash to the I/O pair
 
 ```
 * Depth tracking is useful when you have multiple chain of thought workflows, and want to track drift per depth level. Just pass a depth argument for how nested each I/O is. For example, your model might have Human -> AI -> AI, where the first input and last output would be depth = 0, and the middleware AI's input and output would be depth = 1.
@@ -97,66 +61,93 @@ You can interact with this library in 3 ways;
 `tkyoDriftSetTraining.js(filepath)` handles full dataset ingestion for baseline creation. It:
 
 - Accepts an array of `{ input, output }` objects.
-- Embeds in chunks of 100 for performance.
-- Clears old training files before writing new ones.
-- Locks files after saving.
-- Optionally runs garbage collection between chunks.
+- Embeds each input in chunks of 100, with 8 in parallel for performance, once for each model type.
 
 ```
 IMPORTANT! The set training data file should ONLY be run when you intend on replacing the existing tkyoDrift training data file set. This command will obliterate any existing tkyoDrift training files. 
 
 <<< There should only be ONE set of ideal embeddings for your training data. >>>
 ``` 
+As an additional note, you will see a console log warning that inputs exceeding 512 tokens will result in indexing errors. This is accounted for in the embedding process, and all inputs over 512 tokens will return the average vector of each 512 token chunk.
 
 ## Logging
 
-Results are stored in a single CSV file (`drift_log.csv`) with dynamic headers. Each one-off run appends two rows: one for input and one for output. Keep in mind that training data is not added to the log, as there is no drift to compare against for training data.
+Results are stored in two CSV files (`COS_log.csv` & `EUC_log.csv`) with dynamic headers. Each one-off run appends two rows to each file: one for input and one for output. Keep in mind that training data is not added to the log, as the assumption is that your training baseline is what we compare against to measure drift.
 
 ### Format
 
+For the cosine similarity log:
 ```
 ID, DEPTH, TIMESTAMP, I/O TYPE, SEMANTIC ROLLING COS, SEMANTIC TRAINING COS, CONCEPT ROLLING COS...
 ```
-- Cosine similarities are recorded per model and baseline type.
+For the euclidean distance log:
+```
+ID, DEPTH, TIMESTAMP, I/O TYPE, SEMANTIC ROLLING EUC, SEMANTIC TRAINING EUC, CONCEPT ROLLING EUC...
+```
+- Cosine similarities and euclidean distances are recorded per model and baseline type.
 - Additional metadata like `depth` and UUIDs are included for tracking.
 - UUIDs are shared for the input and output, so that you can review your input/output data logs to inspect which I/O pairs are causing drift.
-- Neither the log, nor the binary files, contain your users input or ai outputs.
+- Neither the log, nor the binary files, contain your users input or ai outputs. This data is not necessary to calculate drift, and its exclusion is an intentional choice for data privacy.
 
 ```
-Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding models.
+Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your lexical model from "lexical" to "linguistic" when writing to the log, the makeLogEntry method of the Drift Class would work, but the log Parser would fail. 
+
+Keep in mind, however, you can change models any time you like, though that will brick drift calculations for a different reason; your inputs/outputs we be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
 ```
 
 ## CLI Tools
 
+TODO: Add the command we need people to enter to trigger this log here after the NPM package is built.
+
 ### `printLogCLI.js`
 
-Parses `drift_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjust to your expected precision needs.
+Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
+
+```
+Note: The first record you enter into this system will always show that there is 0 drift when compared against the rolling data set. This is because the rolling dataset will be compared against itself at that point and there will be no drift to detect. This is a known issue, and was an intentional choice as the alternative would be to exclude a write to the `COS_log.csv` and `EUC_log.csv` logs on first write. 
+
+If this bothers you, you can remove line 2 from the COS and EUC logs after you use this system at least twice.
+```
+
+### `printScalarCLI.js`
+
+Parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
+
+The scalar metrics the system is currently tracking are listed below:
+
+| Metric               | Description                                                   |
+|----------------------|---------------------------------------------------------------|
+| `norm`               | Vector magnitude (captures changes in embedding length/energy)|
+| `textLength`         | Raw character count of the input/output text                  |
+| `tokenLength`        | Number of tokens (based on model tokenizer)                   |
+| `entropy`            | Character-level entropy (measures information density)        |
+| `avgWordLength`      | Average word length (indicates language complexity)           |
+| `punctuationDensity`| Ratio of punctuation to characters (captures tone/stylistics) |
+| `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)     |
+
+```
+Note: Without batch embedding your training data, you will be unable to view scalar metrics. However, we will still collect scalar metrics for your rolling data in the event you add training data at a later time.
+```
 
 # Architecture
 
 ### Embedding Models
 
-TKYO Drift uses remote embedding models on HuggingFace.co for inference. By default, the system operates in JavaScript using a lightweight transformer pipeline, with Python scripts injected as required to improve speed and  enable additional model types.
+TKYO Drift uses remote embedding models on HuggingFace.co for inference using the Xenova Transformers library in javascript or the python native hugging face library in python. By default, the system operates in JavaScript using a lightweight transformer pipeline, with Python scripts injected as required to improve speed when performing batched operations. The python equivalent embedding pipeline allows for CPU usage by default if your system has the appropriate CUDA drivers.
 
 - `all-MiniLM-L12-v2`: Used for semantic drift or changes in tone or communication style.
 - `e5-base`: Used for concept drift or changes in topic or intent.
 - `all-MiniLM-L6-v2`: Used for lexical drift or changes in word choice.
 
-Note that while L6 is a subset of L12, it is also the case that lexical drift is a subset of semantic drift. This model can be disabled if you believe that MiniLM-L12 is comprehensive enough to provide drift tracking for both axis.
+Note that while L6 is a subset of L12, it is also the case that lexical drift is a subset of semantic drift. This model can be disabled if you believe that MiniLM-L12 is comprehensive enough to provide drift tracking for both types. This speeds up one-off and batched operations by about 10%.
 
-### Hugging Face Transformer Library
+### Xenova/Hugging Face Transformer Library
 
-Hugging Face Transformers was chosen as the preferred choice of transformer libraries because:
+While the Xenova transformer library is a javascript equivalent of the Hugging Face python transformer library, the primary difference is that the former was made for JS while the latter was made for Python. The HF library allows for GPU acceleration, which is why it was chosen for batched calls. In either case, we are using the same transformer library for the same purpose. As such, Xenova/Hugging Face Transformers were chosen as the preferred choice of transformer libraries because:
 
-- We needed access to a broader range of model architectures or domain-specific variants.
-- Performance is critical and we wanted to leverage GPU acceleration or quantized models.
-- We're working in Python and already rely on Torch, TensorFlow, and JAX-based tooling.
-- We need support for advanced features like fine-tuning, token classification, or conditional generation beyond embedding.
-
-Regardless, should you choose to, you may replace the Hugging Face library with Xenova because:
-- It runs entirely in Node.js with no backend server or Python runtime.
-- Models are executed locally and cached to avoid repeated loads.
-- Ideal for CLI tools or small NPM modules where dependencies need to be minimal.
+- Embedding models are quite large, and including a wget or some other form of downloading models to run locally would require dealing with user authentication for the huggingface.com site, which we wanted to avoid. 
+- People have good internet now, mostly, so we can get away with streaming the model conclusions to the workflow environment without dealing with a local model.
+- Using wasm for the embedding pipeline lets people hot swap models without having to replace safetensors.
 
 ### Drift Types
 
@@ -166,30 +157,34 @@ Drift is detected across combinations of:
 - `ioType`: input, output
 - `baselineType`: rolling, training
 
-This results in either eight or sixteen cosine similarity comparisons per I/O pair, depending on whether or not training data was provided.
+This results in twelve cosine similarity and euclidean distance comparisons (assuming you use the default models) for each tkyoDrift.js function call.
 - All embeddings are pooled across all input tokens to get mean values from the input and normalized for all models except for the conceptual drift type.
 - Models are loaded sequentially and cached globally to reduce loading time.
 
 Note that once the execution context window closes for the processing I/O pair, models are naturally unloaded. Unless you feel inclined to download and store the models locally in your production pipeline, this is a necessary and unavoidable ~200ms workflow speed penalty.
 
+```
+Drift detection in the scalar metrics is ONLY available when a training dataset is provided, as scalar metrics are comparisons in distribution shape. In other words, without a training distribution to compare against the rolling distribution, there is no comparison to make.
+```
+
 ### Baseline Types
 
 - `Rolling`: A sliding baseline using the most recent N (default 1,000) examples.
 
-The rolling baseline represents the accumulation of inputs and outputs as they are triggered by the production pipeline. As I/O pairs are dispatched to the drift analysis workflow, each I/O pair is saved to the rolling baseline file. When drift calculations are generated, they exclude new I/O pair for that individual calculation but will include them in all subsequent operations. The total number of I/O pairs to be included in drift analysis is a configurable global variable located in the tkyoDrift.js main file. 
+The rolling baseline represents the accumulation of inputs and outputs as they are triggered by the production pipeline. As I/O pairs are dispatched to the drift analysis workflow, each I/O pair is saved to the rolling baseline file. When drift calculations are generated, they exclude the newest I/O pair for that individual calculation but will include them in all subsequent operations. The total number of I/O pairs to be included in drift analysis is a configurable variable located in the pythonHNSW.py file. 
 
 - `Training`: A fixed baseline built once from a full dataset.
 
-The training baseline represents the set of inputs used to generate the initial model AI responses, which are ingested by running the 'tkyoDriftSetTraining.js' script. This script performs a batch analysis of each I/O pair used in the training set and creates an artificially 'locked' training file that can not/will not be be appended to over time. Theoretically, you should only need to update this when you have retrained you model.
+The training baseline represents the set of inputs used to generate the initial model AI responses, which are ingested by running the 'tkyoDriftSetTraining.py' script. This script performs a batch analysis of each I/O pair used in the training set and creates an artificially 'locked' training file that can not/will not be be appended to over time. Theoretically, you should only need to update this when you have retrained you model.
 
-- `Hybrid`: Use the rolling file to provide first K (default 10,000) and last N (default 1,000) simultaneously.
+- `Hybrid`: Use the rolling file to provide oldest K (default 10,000) and newest N (default 1,000) simultaneously.
 
-In the event that there is no training data supplied to the system, the Drift analyzer will use the first N values entered into the rolling file to represent mock 'training' data, while the last K (default of 10,000) values represent the 'rolling' data. This allows us to compare drift against an anchor point to see drift over time, while still having a rolling window to see shock impacts to the system caused by new concepts/semantics/lexicon.
+In the event that there is no training data supplied to the system, the Drift analyzer will use the oldest K values entered into the rolling file to represent mock 'training' data, while the newest K values represent the 'rolling' data. This allows us to compare drift against an anchor point to see drift over time, while still having a rolling window to see shock impacts to the system caused by new concepts/semantics/lexicon.
 
 
 ### Binary Embedding Storage
 
-Embeddings are saved in `.bin` files using float16 for efficient storage. This minimizes disk I/O and enables fast appending. Note that math calculates are still performed in float32 after float16 conversions after disk reads. While this adds noise and make drift detection less precise, it should only impact drift detection after 6 decimal points.
+Embeddings are saved in `.bin` files using float32 for efficient storage. This minimizes disk I/O and enables fast appending.
 
 - Each file is named:  
   `{modelType}.{ioType}.{baselineType}.bin`
@@ -206,17 +201,16 @@ At the time of writing, the default models in this library have either 768 or 38
 
 Note: 1 MB = 1,048,576 bytes (binary MB), but here we're rounding to 1 MB = 1,000,000 bytes for simplicity.
 
-#### `.npy` Rejected
+Scalar files are negligibly large, and even with 1 million records, they should take less than 250 MBs and the Log files themselves are miniscule. 
 
-`.npy` was ruled out due to poor support for appending and write concurrency. `.bin` files offer consistent format and linear write performance with no sidecars.
-
-#### No JSON or `.jsonl`
-
-JSON-based storage was removed to reduce size and parsing cost. Embeddings are stored as raw bytes.
+```
+The rolling files have no upper limit on their size, and will require manual pruning eventually depending on your workflow's throughput. Incidentally, if you do not have access to your training data (you may be using a 3rd party model without a published data set) you may benefit from renaming your rolling files to training files after you have accumulated 10,000 entries.
+```
+TODO: We should probably explain which files exist and why, and as an extension what happens to the system where there isn't a training file to pull data from. This might not need to go here, in the read me, but it should be close to the hybrid mode section.
 
 ### IO Write/Read Methods
 
-File writing/reading is performed using `fs.promises.writeStream` and `fs.promises.readStream`due to the obscene number of floats we need to read, parse and then calculate against, which necessitates that vectors be constructed during the read process to avoid memory overflows. This is an intentional tradeoff of speed for deployability. If you know your system has the memory to spare, IO ops can be improved by replacing write/read streams with loads-to-memory.
+File writing/reading is performed using `fs.promises.writeStream` and `fs.promises.readStream` due to the obscene number of floats we need to read, parse and then calculate against, which necessitates that vectors be constructed during the read process to avoid memory overflows. This is an intentional tradeoff of speed for deployability. If you know your system has the memory to spare, IO ops can be improved by replacing write/read streams with loads-to-memory.
 
 ## HNSW Indexing
 
@@ -265,3 +259,36 @@ This is where K-Means analysis comes into play, allowing us to condense a large 
 
 From this smaller set of centroids, we use HNSW to to find the closest centroid for the B value, which is then used to calculate the cosine similarity and euclidean distance.
 
+Notably, this is a tradeoff between accuracy and speed, as KMeans cluster analysis will generate a centroid for each cluster and not provide the actual nearest neighbor. If this is a problem for your workflow, you can disable the KMeans analysis to always find the nearest neighbor from the training set.
+
+This system uses `(num_of_clusters = int(np.sqrt(num_vectors / 2)))` to determine the number of clusters to generate, as we do not have the ability to use the elbow method to determine the proper value for K.
+
+# Future Iterations
+
+For this project there are a number of ways this platform could be made better, including:
+
+### Rolling Data Selection
+
+The rolling file currently uses a fixed number of records when loaded during the readFromBin method on the DriftModel class, this fixed number may not be a flexible enough method of selecting the number of records to compare for rolling drift. It would be an improvement to modify this so that it uses entries from the last N days instead. 
+
+Building this would require adding a data to the binary file write method to store when a file was added, or replacing the binary file writer entirely and switching to a different file storage format. Regardless, at the time of this readme writeup, there is no date associated with stored vectors and so there is no way to have the rolling file use the last N days of records instead of a fixed count.
+
+### Rolling Data Selection
+
+The current implementation sets K using a heuristic: K = int(sqrt(num_vectors / 2)), which balances clustering granularity with speed. While the elbow method offers a more statistically grounded way to choose K by evaluating clustering performance across several K values, it is computationally intensive.
+
+Implementing the elbow method would require running KMeans multiple times and analyzing metrics like SSE or silhouette scores. Given our real-time and batch constraints, we avoid this due to diminishing accuracy gains (often logarithmic) versus increased computational cost (often linear to exponential with larger datasets).
+
+### Depth Tracking
+
+While being able to track multiple chains of thought in your AI workflow is an important part of measuring drift, the current implementation of depth tracking suffers from a critical drawback in that COS similarity, EUC distance, and scalar metrics are NOT calculated for each depth band. 
+
+Resolving this would require a major refactor of the calculation of drift metrics so that they only compare against other entries of the same depth. Alternatively, it would require writing to individual logs for each depth. In any case, the current functionality may unintentionally pollute the drift scores as I/O from different depths are included in the calculations for COS similarity/EUC distance/Scalar metrics.
+
+### Python vs Javascript
+
+This project was initially built as a pure javascript project to enable wider deployment, but various functions and libraries were originally built, and intended to be used in python. As a result, this project was refactored after an initial test build to include a javascript pipeline for individual embeddings and a python version for batched embeddings.
+
+What this means is that the tkyoDriftSetTraining.py file and the tkyoDrift.js processes are functionally duplicates of each other with the exception that the former is explicitly meant to be called once for a batch, while the later is meant to be invoked on every new input.
+
+This is fine as it is, but since many javascript libraries are just python scripts wearing a disguise, it would be ideal to rebuild this entire platform in python with a javascript NPM package to install it, and a javascript function hook to pass data into it. This would allow this system to avoid unnecessary conversion from javascript into python to execute AI embeddings, calculate K means, or generate the HNSW index.
