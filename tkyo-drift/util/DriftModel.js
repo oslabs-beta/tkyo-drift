@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { error } from 'console';
+// import { error } from 'console';
 import fsPromises from 'fs/promises';
 import { spawn } from 'child_process';
 import { pipeline } from '@xenova/transformers';
@@ -88,24 +88,22 @@ export class DriftModel {
       );
     }
   }
-
+  
   // * Function to make an embedding from an input/output pair
   async makeEmbedding(text) {
     try {
       // Validate I/O text is not null/undefined/empty
       if (typeof text !== 'string' || text.trim() === '') {
         throw new Error(
-          'Expected a non-empty string but received invalid input.'
-        );
+          'Expected a non-empty string but received invalid input.');
       }
-
+   
       // Invoke the load model if it hasn't been done yet
       await this.loadModel();
 
-      let normalizeType = true;
-      if (this.modelType === 'concept') {
-        normalizeType = false;
-      }
+      // Evaluates to true if the model is a concept model
+      let normalizeType = this.modelType === 'concept' ? false : true;
+
       // Get the embedding for the input, save to object
       const result = await this.embeddingModel(text, {
         pooling: 'mean',
@@ -116,12 +114,13 @@ export class DriftModel {
       this.embedding = result.data;
 
       // Check if result.data exists and is a numeric array
-      if (
-        !(this.embedding instanceof Float32Array) ||
-        this.embedding.length === 0 ||
-        typeof this.embedding[0] !== 'number'
-      ) {
-        throw new Error('Embedding result is not a valid numeric array.');
+      if (!(this.embedding instanceof Float32Array)) {
+        throw new Error('Embedding result is not a valid Float32Array.');
+      } 
+      // Check if the embedding is empty
+      if (this.embedding.length === 0) {
+        throw new Error(
+          'Embedding array is empty.');
       }
 
       // Save dimensions to object (the actual vector dim is at position 1)
@@ -130,14 +129,6 @@ export class DriftModel {
       // save byte offset to object
       this.byteOffset = this.embedding.byteOffset;
 
-      // If we throw an error here, it should halt the rest of the code
-      if (!(this.embedding.length === this.dimensions)) {
-        throw error('Dimension Mismatch');
-      }
-
-      if (!this.byteOffset === result.data.byteOffset) {
-        throw error('ByteOffset mismatch');
-      }
     } catch (error) {
       throw new Error(
         `Error in makeEmbedding for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
@@ -300,7 +291,7 @@ export class DriftModel {
     const lengthCheck =
       this.baselineType === 'training' ? TRAINING_MAX_SIZE : ROLLING_MAX_SIZE;
     if (this.vectorArray.length !== lengthCheck || !totalVectors) {
-      throw error('error reading from binary file');
+      throw new Error('error reading from binary file');
     }
   }
 
@@ -341,7 +332,7 @@ export class DriftModel {
       );
 
       if (!valid || this.baselineArray.length !== this.dimensions) {
-        throw error(
+        throw new Error(
           'Error getting baseline: invalid values or dimension mismatch'
         );
       }
@@ -482,14 +473,16 @@ export class DriftModel {
       }, 0);
 
       // * Get Average Word Length
-      const avgWordLength = text.split(/\s+/).reduce((sum, word) => sum + word.length, 0) / (text.split(/\s+/).length || 1);
+      const avgWordLength =
+        text.split(/\s+/).reduce((sum, word) => sum + word.length, 0) /
+        (text.split(/\s+/).length || 1);
 
       // * Get Punctuation Density
-      const punctuationDensity = (text.match(/[.,!?;]/g)?.length || 0) / text.length;
+      const punctuationDensity =
+        (text.match(/[.,!?;]/g)?.length || 0) / text.length;
 
       // * Get Uppercase Ratio
       const uppercaseRatio = (text.match(/[A-Z]/g)?.length || 0) / text.length;
-
 
       // Store the metrics
       this.scalarMetrics = {
