@@ -110,10 +110,8 @@ export class DriftModel {
       // Invoke the load model if it hasn't been done yet
       await this.loadModel();
 
-      let normalizeType = true;
-      if (this.modelType === 'concept') {
-        normalizeType = false;
-      }
+      let normalizeType = this.modelType === 'concept' ? false : true;
+
       // Get the embedding for the input, save to object
       const result = await this.embeddingModel(text, {
         pooling: 'mean',
@@ -124,12 +122,13 @@ export class DriftModel {
       this.embedding = result.data;
 
       // Check if result.data exists and is a numeric array
-      if (
-        !(this.embedding instanceof Float32Array) ||
-        this.embedding.length === 0 ||
-        typeof this.embedding[0] !== 'number'
-      ) {
-        throw new Error('Embedding result is not a valid numeric array.');
+    if (!(this.embedding instanceof Float32Array)) {
+        throw new Error('Embedding result is not a valid Float32Array.');
+      } 
+      // Check if the embedding is empty
+      if (this.embedding.length === 0) {
+        throw new Error(
+          'Embedding array is empty.');
       }
 
       // Save dimensions to object (the actual vector dim is at position 1)
@@ -138,14 +137,6 @@ export class DriftModel {
       // save byte offset to object
       this.byteOffset = this.embedding.byteOffset;
 
-      // If we throw an error here, it should halt the rest of the code
-      if (!(this.embedding.length === this.dimensions)) {
-        throw error('Dimension Mismatch');
-      }
-
-      if (!this.byteOffset === result.data.byteOffset) {
-        throw error('ByteOffset mismatch');
-      }
     } catch (error) {
       throw new Error(
         `Error in makeEmbedding for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
