@@ -1,7 +1,7 @@
 # Prevent _pycache_ creation, since these scripts only run on demand
 import sys
-
 sys.dont_write_bytecode = True
+
 # Import helper function to create kmeans of data
 from util import pythonKMeans
 
@@ -16,11 +16,20 @@ import time
 import json
 from datetime import datetime
 
+# Access to OS functions
 import os
 
+# Allows for garbage collection
+import gc
 
-# TODO: This has a chance of failing during write, but will fail silently.
+# TODO: This has a chance of failing during write.
 # ! We should implement a solution, like writing to a temp file, and then renaming the temp file after completion
+
+# 1. Garbage collection kinda solves this on its own
+# 2. if we made temp files, and then wrote to the real file when done, we could implement
+# 3. automatic skipping of existing files, and only writing the files that are missing
+# If we had a 'skip an iteration if the file already exists' block, that would effectively give us a 
+
 def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Starts the total function timer
@@ -210,7 +219,6 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Create data directories if they doesn't exist
     os.makedirs("data/vectors", exist_ok=True)
-    os.makedirs("data/kmeans", exist_ok=True)
 
     if len(embeddings) < 10000:
 
@@ -244,7 +252,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
 
         # Write to file (header first, then data)
-        with open(f"data/kmeans/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
+        with open(f"data/vectors/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
 
             # Write 8-byte header first
             f.write(header_bytes)
@@ -256,23 +264,96 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     endTotal = time.perf_counter()
     print(f"Elapsed: {endTotal - startTotal:.6f} seconds")
 
+    # -------- Final Cleanup: Release memory --------
+    # Clear GPU cache and delete objects to free memory
+    del model
+    del tokenizer
+    del dataset
+    del dataset_parts
+    del embeddings
+
+    # Only runs if CUDA is used
+    torch.cuda.empty_cache() 
+
+    # Garbage Collect 
+    gc.collect()
+
     return
 
-
 def resolve_io_column(batch, io_type_name):
+    print(f"[DEBUG] type of batch: {type(batch)}")
+    print(f"[DEBUG] sample keys: {list(batch.keys()) if isinstance(batch, dict) else 'N/A'}")
+    print(f"[DEBUG] io_type_name: {io_type_name}")
     try:
+        # -------------------------------
+        # Case 1: Flat column access
+        # -------------------------------
+        # This handles datasets where the column name is a top-level field like "input" or "output"
+        # For example: Dataset({ "input": [...], "output": [...] })
         if hasattr(batch, "column_names") and io_type_name in batch.column_names:
-            return batch[io_type_name]
+            try:
+                return list(batch[io_type_name])
+            except Exception as e:
+                print(f"[WARN] Failed to read column '{io_type_name}': {e}")
+                return []
 
-        # Handle batch = dict of lists (Hugging Face batch)
-        sample = list(batch.values())[0][0]
 
+        # -------------------------------
+        # Case 1b: If we're passed a batch (dict of lists), like in a map() function
+        # -------------------------------
+        if isinstance(batch, dict) and io_type_name in batch:
+            return list(batch[io_type_name])
+        
+        # -------------------------------
+        # Case 2: Nested path access — supports expressions like ['conversations'][0]['value']
+        # -------------------------------
+        # This is common in OpenAI structured data, where each row is a nested dict
+        #   Example:
+        #   row = { 'conversations': [{'role': 'user', 'value': 'hi'}, {'role': 'assistant', 'value': 'hello'}] }
+        #   io_type_name = "['conversations'][0]['value']"
+        #
+        # We dynamically create a lambda to access the field:
+        #   accessor = lambda row: row['conversations'][0]['value']
+        # Then apply it to every row in the batch.
+        if "[" in io_type_name and "]" in io_type_name:
+            accessor = eval(f"lambda row: row{io_type_name}")
+            result = []
+
+            for i, row in enumerate(batch):
+                try:
+                    val = accessor(row)  # Try to access the nested field
+                    if val is not None:
+                        result.append(val)
+                except (KeyError, IndexError, TypeError):
+                    # If something goes wrong (e.g., path doesn’t exist, value is None), skip it
+                    print(f"[WARN] Skipping row {i}: missing nested path in {io_type_name}")
+            return result
+
+        # -------------------------------
+        # Case 3: Fallback for dict-of-lists batch format
+        # -------------------------------
+        # Some HuggingFace DataLoaders return batches like:
+        # {
+        #   'input':  ['Hello', 'How are you?'],
+        #   'output': ['Hi!',   'I am fine.']
+        # }
+        #
+        # This block reconstructs row-wise records:
+        #   [{'input': 'Hello', 'output': 'Hi!'}, ...]
+        #
+        # Then returns the value of the given field for each row.
+        sample = list(batch.values())[0][0]  # Just a check to confirm the structure is correct
         return [
-            row[io_type_name]
+            row[io_type_name]  # Access the target field in the reconstructed row
             for row in [
-                {k: v[i] for k, v in batch.items()}
-                for i in range(len(next(iter(batch.values()))))
+                {k: v[i] for k, v in batch.items()}  # Rebuild a row from column-wise format
+                for i in range(len(next(iter(batch.values()))))  # Loop through index positions
             ]
         ]
+
     except Exception as e:
+        # -------------------------------
+        # Error Handling
+        # -------------------------------
+        # Catch any failure (invalid field, bad structure, etc.) and raise a meaningful error
         raise ValueError(f"Could not extract '{io_type_name}' from dataset: {e}")

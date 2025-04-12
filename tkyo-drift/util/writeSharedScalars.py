@@ -23,7 +23,12 @@ def write_shared_scalar_metrics(data_path, io_type, io_type_name):
     batch_texts = resolve_io_column(dataset, io_type_name)
 
     # Loop through every text item and compute shared scalar values
-    for text in batch_texts:
+    for i, text in enumerate(batch_texts):
+
+        if not isinstance(text, str) or not text.strip():
+            print(f"[WARN] Skipping index {i}: Text is empty or not a string.")   
+            continue     
+
         timestamp = datetime.now().isoformat()  # ISO timestamp for tracking
 
         # --- Compute Shared Metrics ---
