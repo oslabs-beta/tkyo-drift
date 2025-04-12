@@ -210,8 +210,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Create data directories if they doesn't exist
     os.makedirs("data/vectors", exist_ok=True)
-    os.makedirs("data/kmeans", exist_ok=True)
-
+  
     if len(embeddings) < 10000:
 
         # Assign the number of vectors for the training data
@@ -244,7 +243,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
 
         # Write to file (header first, then data)
-        with open(f"data/kmeans/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
+        with open(f"data/vectors/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
 
             # Write 8-byte header first
             f.write(header_bytes)
