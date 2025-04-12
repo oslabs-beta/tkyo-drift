@@ -2,107 +2,234 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import { MODELS, IO_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
-import { loadScalarMetrics } from './loadScalarMetrics.js';
 import { compareScalarDistributions } from './compareScalarDistributions.js';
+import { loadScalarMetrics } from './loadScalarMetrics.js';
 
-// TODO: This is 1 step short of actually doing PSI math, which should probably be it's own util function 
-// Container to hold all metrics for each model/io combo
-const driftByMetric = {};
+// Define the path to where scalar .jsonl files are stored
+const SCALAR_DIR = path.join('data', 'scalars');
 
-for (const ioType of IO_TYPES) {
-  for (const [modelType] of Object.entries(MODELS)) {
-    const baseName = `${modelType}.${ioType}`;
-    const trainingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.training.scalar.jsonl`);
-    const rollingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.rolling.scalar.jsonl`);
+// Define warning boolean to console log a warning if we are in hybrid mode
+let warn = false;
 
-    // Skip if either file doesn't exist
-    if (!fs.existsSync(trainingPath) || !fs.existsSync(rollingPath)) continue;
+// Load all filenames in the scalar directory
+const files = fs.readdirSync(SCALAR_DIR);
 
-    const training = await loadScalarMetrics(trainingPath);
-    const rolling = await loadScalarMetrics(rollingPath);
-    const drift = compareScalarDistributions(training, rolling);
+// Regex pattern to extract metadata from filenames:
+// Format: ioType.metric.[modelType?].baseline.scalar.jsonl
+const scalarFileRegex =
+  /^([a-z]+)\.([a-zA-Z]+)(?:\.([a-zA-Z]+))?\.(training|rolling)\.scalar\.jsonl$/;
 
-    // Push each metric's comparison results into grouped object
-    for (const [metric, values] of Object.entries(drift)) {
-      if (!driftByMetric[metric]) driftByMetric[metric] = [];
-      driftByMetric[metric].push({
-        ioType,
-        modelType,
-        meanDelta: values.meanDelta,
-        stdDelta: values.stdDelta,
-      });
-    }
+// Container to group scalar file pairs (training + rolling) by metric/io/model
+const matchedPairs = new Map();
+
+// Step 1: Group files into training/rolling pairs by ioType + metric + modelType
+for (const file of files) {
+  const match = file.match(scalarFileRegex);
+
+  if (!match) {
+    console.warn(chalk.yellow(`Skipping unrecognized file: ${file}`));
+    continue;
   }
+
+  const [_, ioType, metric, modelTypeRaw, baselineType] = match;
+  const modelType = modelTypeRaw || 'shared'; // Shared metrics have no modelType
+  const key = `${ioType}.${modelType}`; // Group by I/O and model type
+
+  // Create group key if it doesn't exist
+  if (!matchedPairs.has(key)) matchedPairs.set(key, {});
+
+  // Inside that group, nest by metric
+  if (!matchedPairs.get(key)[metric]) matchedPairs.get(key)[metric] = {};
+
+  // Store file metadata
+  matchedPairs.get(key)[metric][baselineType] = {
+    file,
+    metric,
+    ioType,
+    modelType,
+  };
 }
 
-//  Render Each Metric Table
-for (const [metric, rows] of Object.entries(driftByMetric)) {
-  // Build CLI-style table for each metric
+// Step 2: Print a single banner at the top of the CLI
+const banner = `SCALAR METRIC DRIFT: ROLLING vs TRAINING`;
+const pad = 12;
+const width = banner.length + pad;
+const top = '╔' + '═'.repeat(width) + '╗';
+const middle = `║${' '.repeat(pad / 2)}${banner}${' '.repeat(pad / 2)}║`;
+const bottom = '╚' + '═'.repeat(width) + '╝';
+console.log(chalk.cyanBright(`\n${top}\n${middle}\n${bottom}\n`));
+
+// Step 3: Loop through each (I/O + modelType) group
+for (const [groupKey, metricsObj] of matchedPairs.entries()) {
+  const [ioType, modelType] = groupKey.split('.');
+
+  // Initialize the CLI table with fixed headers
   const table = new Table({
     head: [
-      chalk.bold.white('I/O Type'),
-      chalk.bold.white('Drift Type'),
-      chalk.bold.white(`Mean Delta`),
-      chalk.bold.white(`Std Delta`),
+      chalk.bold.white('Metric'),
+      chalk.bold.white('Train μ'), // Mean of training data
+      chalk.bold.white('Roll μ'), // Mean of rolling data
+      chalk.bold.white('Δ Mean'), // Difference in means
+      chalk.bold.white('Train σ'), // Standard deviation of training data
+      chalk.bold.white('Roll σ'), // Standard deviation of rolling data
+      chalk.bold.white('Δ Std'), // Difference in std deviation
+      chalk.bold.white('PSI'), // Population stability index
     ],
   });
 
-  for (const row of rows) {
+  // Step 4: For each metric in this group, calculate drift values
+  for (const [metric, pair] of Object.entries(metricsObj)) {
+    let training;
+    let rolling;
+
+    // If we do not have a pair, we are using HYBRID MODE, and this will use both the rolling files for the training/rolling data
+    if (!pair.training || !pair.rolling) {
+      // Set the warning to true
+      warn = true;
+
+      training = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'rolling',
+        modelType === 'shared' ? null : modelType,
+        // hybrid mode is true here
+        true
+      );
+      rolling = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'rolling',
+        modelType === 'shared' ? null : modelType,
+        // but not here
+        false
+      );
+    } else {
+      // If we do have a matched pair, we will use regular mode, and this will use the training and rolling files respectively.
+      training = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'training',
+        modelType === 'shared' ? null : modelType
+        // hybrid mode is false here
+      );
+      rolling = await loadScalarMetrics(
+        [metric],
+        ioType,
+        'rolling',
+        modelType === 'shared' ? null : modelType
+        // and also here
+      );
+    }
+
+    // Compare statistical distributions (mean/std)
+    const drift = compareScalarDistributions(training, rolling);
+    if (!drift[metric]) {
+      console.log(chalk.dim(`No data returned for ${metric}, skipping.`));
+      continue;
+    }
+
+    // Push the computed values to the table
     table.push([
-      row.ioType.toUpperCase(),
-      row.modelType.toUpperCase(),
-      formatDelta(row.meanDelta),
-      formatDelta(row.stdDelta),
+      metric,
+      format(drift[metric].trainMean),
+      format(drift[metric].rollMean),
+      formatDelta(drift[metric].meanDelta, drift[metric].trainStd),
+      format(drift[metric].trainStd),
+      format(drift[metric].rollStd),
+      formatDelta(drift[metric].stdDelta, drift[metric].trainStd),
+      formatPSI(drift[metric].psi),
     ]);
   }
 
-  // CLI-style title block for each metric section
-  const title = `'${metric}' drift in Rolling vs. Training`;
-  const pad = 12;
-  const width = title.length + pad;
-  const top = '╔' + '═'.repeat(width) + '╗';
-  const middle = `║${' '.repeat(pad / 2)}${title}${' '.repeat(pad / 2)}║`;
-  const bottom = '╚' + '═'.repeat(width) + '╝';
-
-  console.log(chalk.cyanBright(`\n${top}\n${middle}\n${bottom}`));
-  console.log(table.toString());
-}
-
-//  Format Delta with fancy colors
-function formatDelta(val) {
-  if (typeof val !== 'number') return chalk.gray('n/a');
-  const formatted = val.toFixed(2);
-  if (Math.abs(val) < 0.1) return chalk.green(formatted);
-  if (Math.abs(val) < 0.5) return chalk.yellow(formatted);
-  return chalk.red(formatted);
-}
-
-//  this whole section below is to calculate how many training vs rolling we are comparing
-let trainingCount = 0;
-let rollingCount = 0;
-
-for (const ioType of IO_TYPES) {
-  for (const [modelType] of Object.entries(MODELS)) {
-    const baseName = `${modelType}.${ioType}`;
-    const trainingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.training.scalar.jsonl`);
-    const rollingPath = path.join(OUTPUT_DIR, 'scalars', `${baseName}.rolling.scalar.jsonl`);
-
-    if (fs.existsSync(trainingPath)) {
-      const lines = fs.readFileSync(trainingPath, 'utf-8').split('\n').filter(Boolean);
-      trainingCount += lines.length;
-    }
-
-    if (fs.existsSync(rollingPath)) {
-      const lines = fs.readFileSync(rollingPath, 'utf-8').split('\n').filter(Boolean);
-      rollingCount += lines.length;
-    }
+  // Only render tables that have valid data
+  if (table.length > 0) {
+    const sectionLabel = `→ ${ioType.toUpperCase()} • ${modelType.toUpperCase()} SCALAR METRIC VALUES`;
+    console.log(chalk.bold.white(`\n${sectionLabel}`));
+    console.log(table.toString());
   }
 }
 
-const modelCombos = Object.keys(MODELS).length *2; // times 2 because input and output
-const adjustedTrainingCount = Math.floor(trainingCount / modelCombos);
-const adjustedRollingCount = Math.floor(rollingCount / modelCombos);
-const footer = `Samples — Training: ${adjustedTrainingCount.toLocaleString()}   |   Rolling: ${adjustedRollingCount.toLocaleString()}`;
+// Helper to color code regular values
+function format(val) {
+  if (typeof val !== 'number') return chalk.gray('n/a');
+  const formatted = val.toFixed(2);
+  return chalk.white(formatted);
+}
 
-console.log(chalk.gray(`\n${footer}\n`));
+// Helper to color code delta values by severity
+function formatDelta(val, std) {
+  if (typeof val !== 'number') return chalk.gray('n/a');
+  const formatted = val.toFixed(2);
+
+  const z = Math.abs(std > 0 ? val / std : 0);
+
+  if (Math.abs(z) < 1) return chalk.green(formatted); // Safe
+  if (Math.abs(z) < 2) return chalk.yellow(formatted); // Caution
+  return chalk.red(formatted); // Drifted
+}
+
+// Helper to color code PSI values by severity
+function formatPSI(val) {
+  if (typeof val !== 'number') return chalk.gray('n/a');
+  const formatted = val.toFixed(3);
+  if (val < 0.1) return chalk.green(formatted); // No significant change
+  if (val < 0.25) return chalk.yellow(formatted); // Moderate change
+  return chalk.red(formatted); // Major drift
+}
+
+// -------------<< SAMPLE COUNT FOOTER >>-------------
+
+// Initialize per-direction counters for each baseline
+let trainingCount = { input: 0, output: 0 };
+let rollingCount = { input: 0, output: 0 };
+
+// Loop through both I/O types (input/output)
+for (const ioType of ['input', 'output']) {
+  // Define a quick check: shared files will always follow this pattern
+  const isShared = (f) =>
+    f.startsWith(`${ioType}.`) &&
+    f.endsWith('.scalar.jsonl') &&
+    f.split('.').length === 5; // shared = io.metric.baseline.scalar.jsonl
+
+  // Find *any one* shared scalar file for each baseline (we only need one to count lines)
+  const trainingFile = files.find(
+    (f) => isShared(f) && f.includes('.training.')
+  );
+  const rollingFile = files.find((f) => isShared(f) && f.includes('.rolling.'));
+
+  // Read the number of lines for the training baseline
+  if (trainingFile) {
+    const lines = fs
+      .readFileSync(path.join(SCALAR_DIR, trainingFile), 'utf-8')
+      .split('\n')
+      .filter(Boolean); // Filter out empty final line
+    trainingCount[ioType] = lines.length;
+  }
+
+  // Read the number of lines for the rolling baseline
+  if (rollingFile) {
+    const lines = fs
+      .readFileSync(path.join(SCALAR_DIR, rollingFile), 'utf-8')
+      .split('\n')
+      .filter(Boolean);
+    rollingCount[ioType] = lines.length;
+  }
+}
+
+// Sum both directions (input + output) for final total count
+const totalTrain = trainingCount.input + trainingCount.output;
+const totalRoll = rollingCount.input + rollingCount.output;
+
+if (warn) {
+  console.log(
+    chalk.gray(
+      `Running in hybrid mode: Using first 10k rolling as training data. (Do you have training data?)`
+    )
+  );
+}
+// Display results as a final CLI footer line
+console.log(
+  chalk.gray(
+    `\nSamples — Training: ${totalTrain.toLocaleString()}   |   Rolling: ${totalRoll.toLocaleString()}\n`
+  )
+);

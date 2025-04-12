@@ -4,12 +4,10 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { MODELS, IO_TYPES, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
 
-// TODO: Violation counts appear to be double their intended value, find out why
-
 // Constants & CLI Args
 const logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
-const args = process.argv.slice(2); // e.g., `npx tkyoDrift -3`
-const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]); // default to 1 day
+const args = process.argv.slice(2); 
+const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]); 
 const driftThreshold = 0.9;
 const startTime = Date.now() - days * 86400000; // milliseconds in a day
 

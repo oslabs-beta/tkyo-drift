@@ -1,19 +1,24 @@
 # Prevent _pycache_ creation, since these scripts only run on demand
 import sys
+
 sys.dont_write_bytecode = True
 # Import helper function to create kmeans of data
 from util import pythonKMeans
+
 # This is good for vectors/matrices
 import numpy as np
 from transformers import AutoModel, AutoTokenizer
 import torch
 from datasets import Dataset, concatenate_datasets
+
 # Allows the use of time functions
 import time
 import json
 from datetime import datetime
 
 import os
+
+
 # TODO: This has a chance of failing during write, but will fail silently.
 # ! We should implement a solution, like writing to a temp file, and then renaming the temp file after completion
 def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
@@ -36,7 +41,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     # Check if dataset exist
     if data_path:
         print(f"Loading all .arrow files from: {data_path}")
-        
+
         arrow_files = [
             os.path.join(data_path, f)
             for f in os.listdir(data_path)
@@ -53,24 +58,95 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # This prevents the creation of gradients
     @torch.no_grad()
-    # TODO: This section effectively means we are only embedding the first 512 tokens, and all data thereafter is lost
-    # ! Should be ok for most AI workflows, but this will be a problem for ones that take large text inputs
-    # truncation	Cuts off long sequences (from the end)
-    # max_length	Upper bound for number of tokens
-    # padding	Adds [PAD] tokens to match batch size
-    # Embedding function
+
+    # When invoked, this will embed the current batch
     def embed_data(data):
-        # Tokenizes the input data
-        inputData = tokenizer(
-            data,
+        # Stores texts shorter than 512 tokens
+        short_texts = []
+        # Stores short text positions in the batch
+        short_indices = []
+        # Stores texts longer than 512 tokens
+        long_texts = []
+        # Stores long text positions in the batch
+        long_indices = []
+
+        # Split the input into short and long based on token length
+        for index, text in enumerate(data):
+            # Tokenizes each input
+            tokenized = tokenizer.encode(text, add_special_tokens=False)
+            # Check if the length of the token is greater than 512
+            if len(tokenized) >= 512:
+                # If greater, store text in long text
+                long_texts.append(text)
+                # Track index in long indices     
+                long_indices.append(index)     
+            else:
+                # If less than 512, store text in short text
+                short_texts.append(text)
+                # Track index in short indices      
+                short_indices.append(index)    
+
+        # Creates an empty list to put the embeddings in the correct place
+        embeddings = [None] * len(data)
+
+        # Make sure there are short texts in the queue
+        # If so, batch process all short texts
+        if short_texts:
+            # padding	Adds [PAD] tokens to match batch size
+            # truncation	Cuts off long sequences (from the end)
+            # max_length	Upper bound for number of tokens
+            tokenized = tokenizer(
+                short_texts,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=512,
+            ).to(model.device)
+            # Vectorized values of the batched short embeddings
+            output = model(**tokenized)
+            short_embs = output.last_hidden_state.mean(dim=1).cpu().numpy()
+
+            # Assign each embedding back to its original position
+            for i, emb in zip(short_indices, short_embs):
+                embeddings[i] = emb
+
+        # Process long texts one by one (with chunking)
+        for i, text in zip(long_indices, long_texts):
+            # Chunk and embed, then assign
+            embeddings[i] = embed_long_text(text)
+
+        # Return embeddings in the same order as the input
+        return np.stack(embeddings)
+    
+    # Handles the embeddings of a single long text
+    def embed_long_text(text):
+        chunks = chunk_text(text, tokenizer)
+        tokenized = tokenizer(
+            chunks,
             return_tensors="pt",
             padding=True,
             truncation=True,
             max_length=512,
         ).to(model.device)
-        with torch.no_grad():
-            outputData = model(**inputData)
-        return outputData.last_hidden_state.mean(dim=1).cpu().numpy()
+        # Runs the tokenized chunks through the transformer model to get output embeddings
+        output = model(**tokenized)
+        # Averages across all chunk embeddings to a single vector
+        return output.last_hidden_state.mean(dim=1).cpu().numpy().mean(axis=0)
+    
+    # Breaks the text up into overlapping chunks
+    def chunk_text(text, tokenizer, max_length=512, stride=256):
+        # Tokenizes each input
+        tokens = tokenizer.encode(text, add_special_tokens=False)
+        # Holds the tokenized chunks
+        chunks = []
+        for i in range(0, len(tokens), stride):
+            chunk = tokens[i : i + max_length]
+            if not chunk:
+                break
+            chunks.append(tokenizer.decode(chunk))
+            if i + max_length >= len(tokens):
+                break
+        return chunks
 
     # Embed Data
     print(f"\nEmbedding {io_type}s...")
@@ -87,62 +163,41 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         # [io_type_name] selects just the input column
         batch_raw = dataset[i : i + batch_size]
 
-        # Use helper to resolve column names 
+        # Use helper to resolve column names
         batch = resolve_io_column(batch_raw, io_type_name)
-
 
         # Convert the batch of texts to embeddings using our embedding function
         emb = embed_data(batch)
 
         # Compute and log scalar metrics for each item in batch
-        scalar_lines = []
+        # Loop through each embedded vector in the current batch
         for j, vector in enumerate(emb):
-            text = batch[j]
+            text = batch[j]  # Get the original text that produced this vector
+            timestamp = datetime.utcnow().isoformat() + "Z" 
 
-            # Norm of the vector
+            # ------------- << MODEL-SPECIFIC SCALAR METRICS >> -------------
+
+            # L2 norm of the vector = magnitude of the embedding (model-dependent)
             norm = float(np.linalg.norm(vector))
 
-            # Raw text length
-            text_length = len(text)
 
-            # Token length (use tokenizer to match JS side)
-            token_length = len(tokenizer.encode(text))
+            # Model-specific metrics
+            model_metrics = {
+                "norm": norm,
+            }
 
-            # Character-level entropy
-            counts = {}
-            for c in text:
-                counts[c] = counts.get(c, 0) + 1
-            entropy = -sum((count / len(text)) * np.log2(count / len(text)) for count in counts.values())
+            # Save each metric in its own file
+            for metric, value in model_metrics.items():
+                # Build file name: ioType.metric.modelType.training.scalar.jsonl
+                file_path = f"data/scalars/{io_type}.{metric}.{model_type}.training.scalar.jsonl"
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-            # Average word length
-            words = text.split()
-            avg_word_length = sum(len(word) for word in words) / len(words) if words else 0
-
-            # Punctuation density
-            punctuation_density = sum(1 for c in text if c in '.,!?;:') / len(text) if len(text) > 0 else 0
-
-            # Uppercase ratio
-            uppercase_ratio = sum(1 for c in text if c.isupper()) / len(text) if len(text) > 0 else 0
-
-            # Store as JSONL
-            scalar_lines.append(json.dumps({
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "metrics": {
-                    "norm": norm,
-                    "textLength": text_length,
-                    "tokenLength": token_length,
-                    "entropy": entropy,
-                    "avgWordLength": avg_word_length,
-                    "punctuationDensity": punctuation_density,
-                    "uppercaseRatio": uppercase_ratio
-                }
-            }) + "\n")
-
-        # Write to .jsonl file (append mode)
-        os.makedirs("data/scalars", exist_ok=True)
-        with open(f"data/scalars/{model_type}.{io_type}.training.scalar.jsonl", "a", encoding="utf-8") as f:
-            f.writelines(scalar_lines)
-
+                # Write single metric with timestamp to file
+                with open(file_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({
+                        "timestamp": timestamp,
+                        "metrics": {metric: value}
+                    }) + "\n")
 
         # Add this batch's embeddings
         embeddings.append(emb)
@@ -157,7 +212,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     os.makedirs("data/vectors", exist_ok=True)
     os.makedirs("data/kmeans", exist_ok=True)
 
-    if (len(embeddings) < 10000):
+    if len(embeddings) < 10000:
 
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
@@ -167,7 +222,6 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
         # Create header bytes (8 bytes total)
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
-    
 
         # Write to file (header first, then data)
         with open(f"data/vectors/{model_type}.{io_type}.training.bin", "wb") as f:
@@ -188,8 +242,6 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
         # Create header bytes (8 bytes total)
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
-        
-
 
         # Write to file (header first, then data)
         with open(f"data/kmeans/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
@@ -206,6 +258,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     return
 
+
 def resolve_io_column(batch, io_type_name):
     try:
         if hasattr(batch, "column_names") and io_type_name in batch.column_names:
@@ -214,6 +267,12 @@ def resolve_io_column(batch, io_type_name):
         # Handle batch = dict of lists (Hugging Face batch)
         sample = list(batch.values())[0][0]
 
-        return [eval(f"row{io_type_name}", {"row": {k: v[i] for k, v in batch.items()}}) for i in range(len(next(iter(batch.values()))))]
+        return [
+            row[io_type_name]
+            for row in [
+                {k: v[i] for k, v in batch.items()}
+                for i in range(len(next(iter(batch.values()))))
+            ]
+        ]
     except Exception as e:
         raise ValueError(f"Could not extract '{io_type_name}' from dataset: {e}")

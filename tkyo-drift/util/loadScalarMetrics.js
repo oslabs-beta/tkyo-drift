@@ -1,38 +1,95 @@
 import fs from 'fs';
 import readline from 'readline';
+import path from 'path';
 
 // * Function to read scalar metrics from the scalar jsonl files and group them by metric name
-export async function loadScalarMetrics(filePath) {
-  // Initialize an object to hold the grouped metrics 
-  const metrics = {};
+export async function loadScalarMetrics(
+  metricNames,
+  ioType,
+  baselineType,
+  // ! Note that most scalar metrics do not give a shit what model they come from, and only L2 Norm and Token Length do
+  modelType = null,
+  hybridMode = false
+) {
+  const metrics = {}; // this will hold the final merged metric data
 
-  // Create a file stream and readline interface to process the file line by line
-  const fileStream = fs.createReadStream(filePath, { encoding: 'utf-8' });
-  const rl = readline.createInterface({ input: fileStream });
+  for (const metric of metricNames) {
+    let filePath;
 
-  // Loop through each line of the file
-  for await (const line of rl) {
-    // Skip empty lines
-    if (!line.trim()) continue;
+    // Configure file path based on model type first
+    if (modelType) {
+      filePath = path.join(
+        'data/scalars',
+        // ? If the scalar metric is model specific, this will catch it (when this function gets invoked with a model value)
+        `${ioType}.${metric}.${modelType}.${baselineType}.scalar.jsonl`
+      );
+    } else {
+      filePath = path.join(
+        'data/scalars',
+        // ? Otherwise, the scalar metric will come from a model agnostic file
+        `${ioType}.${metric}.${baselineType}.scalar.jsonl`
+      );
+    }
 
-    try {
-      // Parse the line into a JSON object
-      const entry = JSON.parse(line);
-      const values = entry.metrics;
-
-      // Group each metric value by its key (e.g., norm, textLength)
-      for (const [key, value] of Object.entries(values)) {
-        if (!metrics[key]) {
-          metrics[key] = [];
-        }
-        metrics[key].push(value);
+    // handle hybrid mode if it's true
+    if (hybridMode) {
+      if (modelType) {
+        filePath = path.join(
+          'data/scalars',
+          // ? If the scalar metric is model specific, this will catch it (when this function gets invoked with a model value)
+          `${ioType}.${metric}.${modelType}.rolling.scalar.jsonl`
+        );
+      } else {
+        filePath = path.join(
+          'data/scalars',
+          // ? Otherwise, the scalar metric will come from a model agnostic file
+          `${ioType}.${metric}.rolling.scalar.jsonl`
+        );
       }
-    } catch (err) {
-      // Warn and skip if the line is malformed
-      console.warn(`⚠️ Failed to parse line: ${line}`);
+    }
+
+    // Skip if the file doesn't exist (can happen in partially populated environments)
+    if (!fs.existsSync(filePath)) continue;
+
+    // Create a line reader for the .jsonl file
+    const fileStream = fs.createReadStream(filePath);
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
+    });
+
+    // Read each line from the file
+    for await (const line of rl) {
+      try {
+        // Parse the JSON line (each line is a complete JSON object)
+        const entry = JSON.parse(line);
+
+        // Extract the scalar value from the "metrics" block
+        const val = entry.metrics?.[metric];
+
+        // Make sure it's a number before storing it
+        if (typeof val === 'number') {
+          if (!metrics[metric]) metrics[metric] = [];
+          metrics[metric].push(val);
+        }
+      } catch (err) {
+        console.warn(`Could not parse line in ${filePath}:`, err.message);
+      }
     }
   }
 
-  // Return the grouped metrics
-  return metrics;
+  for (const metric in metrics) {
+    const values = metrics[metric]
+
+    if (hybridMode && baselineType === 'training'){
+      // Use the first 10k lines from rolling files as a proxy for the the training data
+      metrics[metric] = values.slice(0,10000)
+    }
+      // use the most recent 1k lines from rolling
+    if (baselineType === 'rolling'){
+      metrics[metric] = values.slice(-1000)
+    }
+  }
+
+  return metrics; // returns a dictionary of arrays keyed by metric name
 }

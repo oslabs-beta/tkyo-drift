@@ -47,6 +47,7 @@ import { v4 } from 'uuid';
 import { DriftModel } from './util/DriftModel.js';
 import makeLogEntry from './util/makeLogEntry.js';
 import makeErrorLogEntry from './util/makeErrorLogEntry.js';
+import captureSharedScalarMetrics from './util/captureSharedScalarMetrics.js';
 
 // * Global Variables for the utilities
 //  Models to embed the I/O Data
@@ -138,12 +139,18 @@ export default async function tkyoDrift(input, output, depth = 0) {
     );
 
     //  ------------- << Get Scalar Metrics >> -------------
+    // Capture shared scalar metrics once for each I/O type, for each baseline type
+    for (const ioType of IO_TYPES) {
+      const text = ioType === 'input' ? input : output;
+      captureSharedScalarMetrics(text, ioType);
+    }
+
     // * Calculate PSI values for scalar metric comparison
     await Promise.all(
       Object.entries(driftModels).map(async ([key, model]) => {
         const isInput = key.includes('.input.');
         const text = isInput ? input : output;
-        model.captureScalarMetrics(text);
+        model.captureModelSpecificScalarMetrics(text);
       })
     );
 
@@ -171,9 +178,12 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
     //  ------------- << Save Scalar Data >> -------------
     // * Save the embedding to the rolling/training files in parallel
+    // Capture unique scalar metrics for each embedding model
     // ! NOTE: Write ops are done to separate files, this is safe
     await Promise.all(
-      Object.values(driftModels).map((model) => model.saveScalarMetrics())
+      Object.values(driftModels).map((model) =>
+        model.saveScalarMetrics()
+      )
     );
 
     //  ------------- << Read Bin Files >> -------------
@@ -230,6 +240,6 @@ export default async function tkyoDrift(input, output, depth = 0) {
 
 // TODO: Remove hardcoded input/output values
 const input =
-  'If you had a time machine, but could only go to the past or the future once and never return, which would you choose and why?';
+  'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
 const output = 'I am sorry, but I do know know how to respond to this request.';
 tkyoDrift(input, output);
