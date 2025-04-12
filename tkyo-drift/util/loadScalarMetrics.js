@@ -8,23 +8,45 @@ export async function loadScalarMetrics(
   ioType,
   baselineType,
   // ! Note that most scalar metrics do not give a shit what model they come from, and only L2 Norm and Token Length do
-  modelType = null
+  modelType = null,
+  hybridMode = false
 ) {
   const metrics = {}; // this will hold the final merged metric data
 
   for (const metric of metricNames) {
-    // Construct the full path to the JSONL file for this metric
-    const filePath = modelType
-      ? path.join(
+    let filePath;
+
+    // Configure file path based on model type first
+    if (modelType) {
+      filePath = path.join(
+        'data/scalars',
+        // ? If the scalar metric is model specific, this will catch it (when this function gets invoked with a model value)
+        `${ioType}.${metric}.${modelType}.${baselineType}.scalar.jsonl`
+      );
+    } else {
+      filePath = path.join(
+        'data/scalars',
+        // ? Otherwise, the scalar metric will come from a model agnostic file
+        `${ioType}.${metric}.${baselineType}.scalar.jsonl`
+      );
+    }
+
+    // handle hybrid mode if it's true
+    if (hybridMode) {
+      if (modelType) {
+        filePath = path.join(
           'data/scalars',
           // ? If the scalar metric is model specific, this will catch it (when this function gets invoked with a model value)
-          `${ioType}.${metric}.${modelType}.${baselineType}.scalar.jsonl`
-        )
-      : path.join(
+          `${ioType}.${metric}.${modelType}.rolling.scalar.jsonl`
+        );
+      } else {
+        filePath = path.join(
           'data/scalars',
           // ? Otherwise, the scalar metric will come from a model agnostic file
-          `${ioType}.${metric}.${baselineType}.scalar.jsonl`
+          `${ioType}.${metric}.rolling.scalar.jsonl`
         );
+      }
+    }
 
     // Skip if the file doesn't exist (can happen in partially populated environments)
     if (!fs.existsSync(filePath)) continue;
@@ -53,6 +75,19 @@ export async function loadScalarMetrics(
       } catch (err) {
         console.warn(`Could not parse line in ${filePath}:`, err.message);
       }
+    }
+  }
+
+  for (const metric in metrics) {
+    const values = metrics[metric]
+
+    if (hybridMode && baselineType === 'training'){
+      // Use the first 10k lines from rolling files as a proxy for the the training data
+      metrics[metric] = values.slice(0,10000)
+    }
+      // use the most recent 1k lines from rolling
+    if (baselineType === 'rolling'){
+      metrics[metric] = values.slice(-1000)
     }
   }
 

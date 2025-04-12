@@ -29,8 +29,10 @@ def tkyoDriftSetTraining(data_set_Path, input_name, output_name):
         "input": input_name,
         "output": output_name,
     }
+
     # Call once per I/O type to extract shared scalar metrics
     for io_type, column_name in IO_TYPES.items():
+        print(f"Building scalar metrics for {io_type}")
         write_shared_scalar_metrics(data_set_Path, io_type, column_name)
 
     # Iterate through models dictionary
