@@ -6,6 +6,7 @@ from util import pythonTrainingEmb
 from util.writeSharedScalars import write_shared_scalar_metrics
 
 
+# Allows the use of time functions
 import time
 # JSON serialization/deserialization
 import json
