@@ -158,7 +158,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         return chunks
 
     # Embed Data
-    print(f"\nEmbedding {io_type}s...")
+    print(f"Embedding {io_type}s using {model_name} for {model_type} knowledge...")
     # Initialize an empty list to store all input embeddings
     embeddings = []
     # Set the number of examples to process at once (smaller = less memory, larger = faster)
@@ -212,8 +212,26 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         embeddings.append(emb)
 
         # Print progress every 10 batches
-        if i % (batch_size) == 0:
-            print(f"Processed {min(i+batch_size, len(dataset))}/{len(dataset)}")
+        if i % batch_size == 0:
+            elapsed = time.perf_counter() - startTotal
+            processed = min(i + batch_size, len(dataset))
+            est_total = (elapsed / processed) * len(dataset) if processed else 0
+            est_remaining = est_total - elapsed
+
+            mins, secs = divmod(est_remaining, 60)
+            if est_remaining < 60:
+                eta_display = f"{int(secs)}s"
+            else:
+                eta_display = f"{int(mins):02d}:{int(secs):02d}"
+
+            print(
+                f"Processed {processed}/{len(dataset)} | ETA: {eta_display} ",
+                end="\r",
+                flush=True
+            )
+
+
+    print()
 
     embeddings = np.concatenate(embeddings)
 
@@ -221,7 +239,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     os.makedirs("data/vectors", exist_ok=True)
 
     if len(embeddings) < 10000:
-
+        print(f"You have < 10000 {io_type} embeddings: Saving unfiltered embeddings to data directory.")
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
 
@@ -240,6 +258,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             # Then write the data
             embeddings.astype(np.float32).tofile(f)
     else:
+        print(f"You have >=  10000 {io_type} embeddings: Performing K Means analysis to filter embeddings.")
         kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
 
         # Assign the number of vectors for the training data
@@ -252,6 +271,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
 
         # Write to file (header first, then data)
+        print(f"Writing KMeans centroids to disk.")
         with open(f"data/vectors/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
 
             # Write 8-byte header first
@@ -262,7 +282,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()
-    print(f"Elapsed: {endTotal - startTotal:.6f} seconds")
+    print(f"Embedding completed in: {endTotal - startTotal:.2f} seconds")
 
     # -------- Final Cleanup: Release memory --------
     # Clear GPU cache and delete objects to free memory
@@ -281,9 +301,6 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     return
 
 def resolve_io_column(batch, io_type_name):
-    print(f"[DEBUG] type of batch: {type(batch)}")
-    print(f"[DEBUG] sample keys: {list(batch.keys()) if isinstance(batch, dict) else 'N/A'}")
-    print(f"[DEBUG] io_type_name: {io_type_name}")
     try:
         # -------------------------------
         # Case 1: Flat column access
@@ -291,11 +308,7 @@ def resolve_io_column(batch, io_type_name):
         # This handles datasets where the column name is a top-level field like "input" or "output"
         # For example: Dataset({ "input": [...], "output": [...] })
         if hasattr(batch, "column_names") and io_type_name in batch.column_names:
-            try:
-                return list(batch[io_type_name])
-            except Exception as e:
-                print(f"[WARN] Failed to read column '{io_type_name}': {e}")
-                return []
+            return list(batch[io_type_name])
 
 
         # -------------------------------
@@ -342,7 +355,6 @@ def resolve_io_column(batch, io_type_name):
         #   [{'input': 'Hello', 'output': 'Hi!'}, ...]
         #
         # Then returns the value of the given field for each row.
-        sample = list(batch.values())[0][0]  # Just a check to confirm the structure is correct
         return [
             row[io_type_name]  # Access the target field in the reconstructed row
             for row in [

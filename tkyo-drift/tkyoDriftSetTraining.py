@@ -48,7 +48,7 @@ def tkyoDriftSetTraining(data_set_Path, input_name, output_name):
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()
-    print(f"Elapsed: {endTotal - startTotal:.6f} seconds")
+    print(f"Full embedding run for all I/Os completed in: {endTotal - startTotal:.2f} seconds")
 
     return {"status": "ok", "message": "Training completed"}
 

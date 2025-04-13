@@ -53,6 +53,6 @@ const tkyoDriftSetTraining = async (
 
 // TODO Remove hardcoded path, input name, & output name
 const dataSetPath = './data';
-const inputName = 'question';
-const outputName = 'answer';
+const inputName = 'problem';
+const outputName = 'solution';
 tkyoDriftSetTraining(dataSetPath, inputName, outputName);

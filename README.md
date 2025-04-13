@@ -61,7 +61,7 @@ import tkyoDrift from tkyoDrift
 3. Add an async function call to the tkyoDrift main function passing in your I/O pair:
 ```js
 ...
-async tkyoDrift(userinput, aioutput)
+tkyoDrift(userinput, aioutput)
 ... 
 ```
 4. Enjoy the benefits of having drift detection:
@@ -111,7 +111,7 @@ IMPORTANT! The set training data file should ONLY be run when you intend on repl
 
 <<< There should only be ONE set of ideal embeddings for your training data. >>>
 ``` 
-As an additional note, you will see a console log warning that inputs exceeding 512 tokens will result in indexing errors. This is accounted for in the embedding process, and all inputs over 512 tokens will return the average vector of each 512 token chunk.
+As an additional note, the batch embedding tool is designed to indiscriminantly ingest all `.arrow` files in the directory you specify. If needed, nest your training data in a subdirectory to avoid ingesting data other than your intended files. Also, please ensure your data is structured uniformly.
 
 ## Logging
 
