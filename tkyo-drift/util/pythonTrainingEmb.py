@@ -173,7 +173,6 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         # Compute and log scalar metrics for each item in batch
         # Loop through each embedded vector in the current batch
         for j, vector in enumerate(emb):
-            text = batch[j]  # Get the original text that produced this vector
             timestamp = datetime.utcnow().isoformat() + "Z" 
 
             # ------------- << MODEL-SPECIFIC SCALAR METRICS >> -------------
@@ -229,10 +228,9 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Create data directories if they doesn't exist
     os.makedirs("data/vectors", exist_ok=True)
-  
 
-    if len(embeddings) < 10000:
-        print(f"You have < 10000 {io_type} embeddings: Saving unfiltered embeddings to data directory.")
+    if len(embeddings) < 1000000:
+        print(f"You have < 1000000 {io_type} embeddings: Saving unfiltered embeddings to data directory.")
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
 
@@ -251,7 +249,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             # Then write the data
             embeddings.astype(np.float32).tofile(f)
     else:
-        print(f"You have >=  10000 {io_type} embeddings: Performing K Means analysis to filter embeddings.")
+        print(f"You have >=  1000000 {io_type} embeddings: Performing K Means analysis to filter embeddings.")
         kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
 
         # Assign the number of vectors for the training data
