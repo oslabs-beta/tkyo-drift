@@ -1,18 +1,14 @@
 import { spawn } from 'child_process';
 
-const tkyoDriftSetTraining = async (
-  dataSetPath,
-  inputName = 'input',
-  outputName = 'output'
-) => {
+const tkyoDriftSetTraining = async (dataSetPath, ioType, ioTypeName) => {
   try {
     return new Promise((resolve, reject) => {
       const pyProg = spawn('python3', [
         '-u',
         './tkyoDriftSetTraining.py',
         dataSetPath,
-        inputName,
-        outputName,
+        ioType,
+        ioTypeName,
       ]);
 
       let result = '';
@@ -53,8 +49,8 @@ const tkyoDriftSetTraining = async (
 
 // TODO Remove hardcoded path, input name, & output name
 const dataSetPath = './data';
-const inputName = 'problem';
-const outputName = 'solution';
-// input_name = "['conversations'][0]['value']"
-// output_name = "['conversations'][1]['value']"
-tkyoDriftSetTraining(dataSetPath, inputName, outputName);
+// First call: embed the "problem" column as "problem"
+await tkyoDriftSetTraining(dataSetPath, 'problem', 'problem');
+
+// Second call: embed the "solution" column as "solution"
+await tkyoDriftSetTraining(dataSetPath, 'solution', 'solution');

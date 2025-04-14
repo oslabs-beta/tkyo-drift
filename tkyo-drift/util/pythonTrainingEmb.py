@@ -19,8 +19,6 @@ from datetime import datetime
 import os
 
 
-# TODO: This has a chance of failing during write, but will fail silently.
-# ! We should implement a solution, like writing to a temp file, and then renaming the temp file after completion
 def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Starts the total function timer
