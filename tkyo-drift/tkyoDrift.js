@@ -218,8 +218,8 @@ export default async function tkyoDrift(text, ioType) {
 }
 
 // TODO: Remove hardcoded input/output values
-const input =
-  'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
-const output = 'I am sorry, but I do know know how to respond to this request.';
-await tkyoDrift(input, 'problem');
-await tkyoDrift(output, 'solution');
+// const input =
+//   'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
+// const output = 'I am sorry, but I do know know how to respond to this request.';
+// await tkyoDrift(input, 'problem');
+// await tkyoDrift(output, 'solution');
