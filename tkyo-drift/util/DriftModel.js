@@ -7,12 +7,11 @@ import { pipeline } from '@xenova/transformers';
 import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
 
 export class DriftModel {
-  constructor(modelType, modelName, ioType, baselineType, depth = 0) {
+  constructor(modelType, modelName, ioType, baselineType) {
     this.baselineType = baselineType;
     this.modelType = modelType;
     this.modelName = modelName;
     this.ioType = ioType;
-    this.depth = depth;
     this.distance = null;
     this.embedding = null;
     this.byteOffset = null;
