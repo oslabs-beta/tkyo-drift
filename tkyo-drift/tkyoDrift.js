@@ -83,33 +83,33 @@ export default async function tkyoDrift(text, ioType) {
   //  ------------- << BEGIN try/catch Error Handling >> -------------
   // * Error handling is done within model method calls, which send the error to the catch block.
   try {
-        // Check if directory exists
-        if (!fs.existsSync(OUTPUT_DIR)) {
-          fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-        }
-    
-        // Create subdirectories for vectors, scalars, and logs
-        const subdirectories = ['vectors', 'scalars', 'logs'];
-        for (const dir of subdirectories) {
-          const subdirPath = path.join(OUTPUT_DIR, dir);
-          if (!fs.existsSync(subdirPath)) {
-            fs.mkdirSync(subdirPath, { recursive: true });
-          }
-        }
-    
+    // Check if directory exists
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
+
+    // Create subdirectories for vectors, scalars, and logs
+    const subdirectories = ['vectors', 'scalars', 'logs'];
+    for (const dir of subdirectories) {
+      const subdirPath = path.join(OUTPUT_DIR, dir);
+      if (!fs.existsSync(subdirPath)) {
+        fs.mkdirSync(subdirPath, { recursive: true });
+      }
+    }
+
     //  ------------- << Construct Model Combinations >> -------------
     try {
       // * For each model, for each ioType, for each baselineType,
       // make a model and assign to driftModels object
-      for (const [modelType, modelName] of Object.entries(MODELS)) {   
-          for (const baselineType of BASELINE_TYPES) {
-            const key = `${modelType}.${ioType}.${baselineType}`;
-            driftModels[key] = new DriftModel(
-              modelType,
-              modelName,
-              ioType,
-              baselineType
-            );
+      for (const [modelType, modelName] of Object.entries(MODELS)) {
+        for (const baselineType of BASELINE_TYPES) {
+          const key = `${modelType}.${ioType}.${baselineType}`;
+          driftModels[key] = new DriftModel(
+            modelType,
+            modelName,
+            ioType,
+            baselineType
+          );
         }
       }
     } catch (error) {
@@ -128,21 +128,19 @@ export default async function tkyoDrift(text, ioType) {
     //  ------------- << Load the Xenova Models >> -------------
     // * Load all models sequentially
     // ! NOTE: Loading models sequentially is intentional, as they check the cache before attempting to load
-    for (const model of Object.values(driftModels)) {
-      await model.loadModel();
-    }
+    await Promise.all(
+      Object.values(driftModels).map(async (model) => model.loadModel())
+    );
 
     //  ------------- << Get Embeddings >> -------------
     // * Get embeddings for all inputs and outputs in parallel
     await Promise.all(
-      Object.values(driftModels).map((model) => {
-        model.makeEmbedding(text);
-      })
+      Object.values(driftModels).map(async (model) => model.makeEmbedding(text))
     );
 
     //  ------------- << Get Scalar Metrics >> -------------
     // Capture shared scalar metrics once for each I/O type, for each baseline type
-      captureSharedScalarMetrics(text, ioType);
+    captureSharedScalarMetrics(text, ioType);
 
     // * Calculate PSI values for scalar metric comparison
     await Promise.all(
@@ -151,11 +149,12 @@ export default async function tkyoDrift(text, ioType) {
       })
     );
 
+
     //  ------------- << Save Embedding Data >> -------------
     // * Save the embedding to the rolling/training files in parallel
     // ! NOTE: Write ops are done to separate files, this is safe
     await Promise.all(
-      Object.values(driftModels).map((model) => model.saveToBin())
+      Object.values(driftModels).map(async (model) => model.saveToBin())
     );
 
     //  ------------- << Save Scalar Data >> -------------
@@ -163,9 +162,7 @@ export default async function tkyoDrift(text, ioType) {
     // Capture unique scalar metrics for each embedding model
     // ! NOTE: Write ops are done to separate files, this is safe
     await Promise.all(
-      Object.values(driftModels).map((model) =>
-        model.saveScalarMetrics()
-      )
+      Object.values(driftModels).map(async (model) => model.saveScalarMetrics())
     );
 
     //  ------------- << Read Bin Files >> -------------
@@ -174,7 +171,7 @@ export default async function tkyoDrift(text, ioType) {
     // ? See Training Max Size/Rolling Max Size in ReadMe for more info
     // For each model, read from disk
     await Promise.all(
-      Object.values(driftModels).map((model) => model.readFromBin())
+      Object.values(driftModels).map(async (model) => model.readFromBin())
     );
 
     //  ------------- << Get Baseline >> -------------
@@ -224,5 +221,5 @@ export default async function tkyoDrift(text, ioType) {
 const input =
   'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
 const output = 'I am sorry, but I do know know how to respond to this request.';
-await tkyoDrift(input, "problem");
-await tkyoDrift(output, "solution")
+await tkyoDrift(input, 'problem');
+await tkyoDrift(output, 'solution');

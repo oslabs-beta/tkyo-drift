@@ -2,12 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import { MODELS, IO_TYPES, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
+import { MODELS, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
 
 // Constants & CLI Args
 const logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
-const args = process.argv.slice(2); 
-const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]); 
+const args = process.argv.slice(2);
+const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]);
 const driftThreshold = 0.9;
 const startTime = Date.now() - days * 86400000; // milliseconds in a day
 
@@ -36,9 +36,12 @@ const COS_COLUMNS = headers.filter((h) => h.endsWith('COS'));
 
 // Filter rows by timestamp so we only show recent results
 const filteredRows = rows.filter((row) => {
-  const timestamp = new Date(row[2]).getTime(); // index 2 = TIMESTAMP
+  const timestamp = new Date(row[1]).getTime(); // index 2 = TIMESTAMP
   return timestamp >= startTime;
 });
+
+// I need the flippin IO Types from the column
+const ioTypes = [...new Set(filteredRows.map((row) => row[2]))];
 
 // Create empty maps to store cumulative similarity values
 const columnSums = {};
@@ -46,7 +49,7 @@ const rowCounts = {};
 
 // Loop through all filtered rows to aggregate cosine similarity by type
 for (const row of filteredRows) {
-  const ioType = row[3]; // the I/O column
+  const ioType = row[2]; // the I/O column
 
   for (const col of COS_COLUMNS) {
     const key = `${ioType}|${col}`;
@@ -79,7 +82,7 @@ const table = new Table({
 });
 
 // Build the table rows by model type, io type, and baseline type
-for (const ioType of IO_TYPES) {
+for (const ioType of ioTypes) {
   for (const [modelType] of Object.entries(MODELS)) {
     for (const baselineType of BASELINE_TYPES) {
       const columnHeader = `${modelType.toUpperCase()} ${baselineType.toUpperCase()} COS`;
@@ -99,11 +102,11 @@ for (const ioType of IO_TYPES) {
       // Count violations under the similarity threshold
       let groupViolations = 0;
       let groupTotal = 0;
-      
+
       for (const row of filteredRows) {
-        const rowIO = row[3];
+        const rowIO = row[2];
         if (rowIO !== ioType) continue;
-      
+
         const val = parseFloat(row[colIndex]);
         if (!isNaN(val)) {
           groupTotal++;
@@ -143,7 +146,9 @@ const titleText = `TKYO DRIFT ANALYTICS FOR PAST ${days} DAY(S)`;
 const padding = 24;
 const contentWidth = titleText.length + padding;
 const top = '╔' + '═'.repeat(contentWidth) + '╗';
-const middle = `║${' '.repeat(padding / 2)}${titleText}${' '.repeat(padding / 2)}║`;
+const middle = `║${' '.repeat(padding / 2)}${titleText}${' '.repeat(
+  padding / 2
+)}║`;
 const bottom = '╚' + '═'.repeat(contentWidth) + '╝';
 
 // Put it all together and print

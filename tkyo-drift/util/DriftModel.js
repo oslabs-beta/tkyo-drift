@@ -121,13 +121,12 @@ export class DriftModel {
       this.embedding = result.data;
 
       // Check if result.data exists and is a numeric array
-    if (!(this.embedding instanceof Float32Array)) {
+      if (!(this.embedding instanceof Float32Array)) {
         throw new Error('Embedding result is not a valid Float32Array.');
-      } 
+      }
       // Check if the embedding is empty
       if (this.embedding.length === 0) {
-        throw new Error(
-          'Embedding array is empty.');
+        throw new Error('Embedding array is empty.');
       }
 
       // Save dimensions to object (the actual vector dim is at position 1)
@@ -135,7 +134,6 @@ export class DriftModel {
 
       // save byte offset to object
       this.byteOffset = this.embedding.byteOffset;
-
     } catch (error) {
       throw new Error(
         `Error in makeEmbedding for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
@@ -242,7 +240,7 @@ export class DriftModel {
           this.modelType,
           JSON.stringify(Array.from(this.embedding)),
           this.baselineType,
-          this.embeddingFilePath
+          this.embeddingFilePath,
         ]);
 
         let result = '';
@@ -441,7 +439,6 @@ export class DriftModel {
     try {
       // Skip if training — this method is only for rolling baseline
       if (this.baselineType === 'training') return;
-
       // Calculate vector L2 norm
       const norm = Math.sqrt(
         this.embedding.reduce((sum, val) => sum + val * val, 0)
