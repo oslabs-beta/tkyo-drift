@@ -5,6 +5,7 @@ import fsPromises from 'fs/promises';
 import { spawn } from 'child_process';
 import { pipeline } from '@xenova/transformers';
 import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
+import { fileURLToPath } from 'url';
 
 export class DriftModel {
   constructor(modelType, modelName, ioType, baselineType) {
@@ -232,10 +233,31 @@ export class DriftModel {
 
   // * Function to read the contents of the Bins, Build an HNSW
   async readFromBin() {
+    // Full path to DriftModel.js
+    const __filename = fileURLToPath(import.meta.url);
+    // Directory containing the file (util)
+    const __dirname = path.dirname(__filename);
+
+    // Creates a link between the data file and the inital function file
+    const resolvedDataSetPath = path.resolve(
+      process.cwd(),
+      this.embeddingFilePath
+    );
+
+    // Check if the dataset folder exists
+    if (!fs.existsSync(resolvedDataSetPath)) {
+      // If not, throw an error
+      throw new Error(
+        `The dataSetPath "${resolvedDataSetPath}" does not exist.`
+      );
+    }
+    // Ensures we are running pythonHNSW.py correctly
+    const scriptPath = path.join(__dirname, 'pythonHNSW.py');
+
     try {
       return new Promise((resolve, reject) => {
         const pyProg = spawn('python3', [
-          './util/pythonHNSW.py',
+          scriptPath,
           this.ioType,
           this.modelType,
           JSON.stringify(Array.from(this.embedding)),
@@ -283,7 +305,6 @@ export class DriftModel {
             Array.isArray(distances) && distances.length > 0
               ? distances.reduce((sum, val) => sum + val, 0) / distances.length
               : null;
-
           resolve({ centroids, distances });
         });
       });

@@ -218,6 +218,11 @@ export default async function tkyoDrift(text, ioType) {
 }
 
 // TODO: Remove hardcoded input/output values
+
+// const input =
+//   'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
+// const output = 'I am sorry, but I do know know how to respond to this request.';
+// tkyoDrift(input, output);
 const input = 'How do the properties of the catalyst and the reaction conditions affect the rate of a heterogeneous catalytic reaction? Provide a detailed explanation with examples.';
 const output = `**Solution:**
 The rate of a heterogeneous catalytic reaction is governed by **catalyst properties** and **reaction conditions**:
