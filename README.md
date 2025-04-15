@@ -543,7 +543,7 @@ From this smaller set of centroids, we use HNSW to find the closest centroid for
 
 Notably, this is a tradeoff between accuracy and speed, as KMeans cluster analysis will generate a centroid for each cluster and not provide the actual nearest neighbor. If this is a problem for your workflow, you can disable the KMeans analysis to always find the nearest neighbor from the training set.
 
-This system uses `(num_of_clusters = int(np.sqrt(num_vectors / 2)))` to determine the number of clusters to generate, as we do not have the ability to use the elbow method to determine the proper value for K.
+This system uses `(num_of_clusters = int(np.sqrt(num_vectors / 2)*10))` to determine the number of clusters to generate, as we do not have the ability to use the elbow method to determine the proper value for K.
 
 ## Scalar Metrics
 
@@ -613,7 +613,7 @@ Building this would require adding a date to the binary file write method to sto
 
 ### Picking a better K value
 
-The current implementation sets K using a heuristic: K = int(sqrt(num_vectors / 2)) if your training data includes at least 500,000 records. This means that there is an accuracy shift that kicks in at exactly 500,000 records. Before this point, the system will retrieve the nearest neighbor from all 500,000 points but after this point we will be searching from 500 records.
+The current implementation sets K using a heuristic: K = int(sqrt(num_vectors / 2)*10) if your training data includes at least 500,000 records. This means that there is an accuracy shift that kicks in at exactly 500,000 records. Before this point, the system will retrieve the nearest neighbor from all 500,000 points but after this point we will be searching from 500 records.
 
 While the elbow method offers a more statistically grounded way to choose K by evaluating clustering performance across several K values, it is computationally intensive.
 
