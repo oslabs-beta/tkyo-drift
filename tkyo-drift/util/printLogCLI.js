@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
 import Table from 'cli-table3';
-import { MODELS, BASELINE_TYPES, OUTPUT_DIR } from '../tkyoDrift.js';
+import { MODELS, OUTPUT_DIR } from '../tkyoDrift.js';
 
 // Constants & CLI Args
 const logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
@@ -46,6 +46,7 @@ const ioTypes = [...new Set(filteredRows.map((row) => row[2]))];
 // Create empty maps to store cumulative similarity values
 const columnSums = {};
 const rowCounts = {};
+const baselineTypes = ['rolling', 'training'];
 
 // Loop through all filtered rows to aggregate cosine similarity by type
 for (const row of filteredRows) {
@@ -84,7 +85,7 @@ const table = new Table({
 // Build the table rows by model type, io type, and baseline type
 for (const ioType of ioTypes) {
   for (const [modelType] of Object.entries(MODELS)) {
-    for (const baselineType of BASELINE_TYPES) {
+    for (const baselineType of baselineTypes) {
       const columnHeader = `${modelType.toUpperCase()} ${baselineType.toUpperCase()} COS`;
       const colIndex = headers.indexOf(columnHeader);
       if (colIndex === -1) continue;
