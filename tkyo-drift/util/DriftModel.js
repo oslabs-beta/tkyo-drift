@@ -5,6 +5,7 @@ import fsPromises from 'fs/promises';
 import { spawn } from 'child_process';
 import { pipeline } from '@xenova/transformers';
 import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
+import { fileURLToPath } from 'url';
 
 export class DriftModel {
   constructor(modelType, modelName, ioType, baselineType, depth = 0) {
@@ -122,13 +123,12 @@ export class DriftModel {
       this.embedding = result.data;
 
       // Check if result.data exists and is a numeric array
-    if (!(this.embedding instanceof Float32Array)) {
+      if (!(this.embedding instanceof Float32Array)) {
         throw new Error('Embedding result is not a valid Float32Array.');
-      } 
+      }
       // Check if the embedding is empty
       if (this.embedding.length === 0) {
-        throw new Error(
-          'Embedding array is empty.');
+        throw new Error('Embedding array is empty.');
       }
 
       // Save dimensions to object (the actual vector dim is at position 1)
@@ -136,7 +136,6 @@ export class DriftModel {
 
       // save byte offset to object
       this.byteOffset = this.embedding.byteOffset;
-
     } catch (error) {
       throw new Error(
         `Error in makeEmbedding for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
@@ -235,15 +234,36 @@ export class DriftModel {
 
   // * Function to read the contents of the Bins, Build an HNSW
   async readFromBin() {
+    // Full path to DriftModel.js
+    const __filename = fileURLToPath(import.meta.url);
+    // Directory containing the file (util)
+    const __dirname = path.dirname(__filename);
+
+    // Creates a link between the data file and the inital function file
+    const resolvedDataSetPath = path.resolve(
+      process.cwd(),
+      this.embeddingFilePath
+    );
+
+    // Check if the dataset folder exists
+    if (!fs.existsSync(resolvedDataSetPath)) {
+      // If not, throw an error
+      throw new Error(
+        `The dataSetPath "${resolvedDataSetPath}" does not exist.`
+      );
+    }
+    // Ensures we are running pythonHNSW.py correctly
+    const scriptPath = path.join(__dirname, 'pythonHNSW.py');
+
     try {
       return new Promise((resolve, reject) => {
         const pyProg = spawn('python3', [
-          './util/pythonHNSW.py',
+          scriptPath,
           this.ioType,
           this.modelType,
           JSON.stringify(Array.from(this.embedding)),
           this.baselineType,
-          this.embeddingFilePath
+          this.embeddingFilePath,
         ]);
 
         let result = '';
@@ -286,7 +306,6 @@ export class DriftModel {
             Array.isArray(distances) && distances.length > 0
               ? distances.reduce((sum, val) => sum + val, 0) / distances.length
               : null;
-
           resolve({ centroids, distances });
         });
       });

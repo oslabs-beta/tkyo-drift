@@ -1,15 +1,35 @@
 import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 
-const tkyoDriftSetTraining = async (
+// Full path to tkyoDriftSetTrainingHook.js
+const __filename = fileURLToPath(import.meta.url);
+// Directory containing the file (tkyo-drift)
+const __dirname = path.dirname(__filename);
+
+export default async function tkyoDriftSetTraining(
   dataSetPath,
   inputName = 'input',
   outputName = 'output'
-) => {
+) {
   try {
     return new Promise((resolve, reject) => {
+      // Creates a link between the data file and the inital function file
+      const resolvedDataSetPath = path.resolve(process.cwd(), dataSetPath);
+
+      // Check if the dataset folder exists
+      if (!fs.existsSync(resolvedDataSetPath)) {
+        // If not, throw an error
+        throw new Error(
+          `The dataSetPath "${resolvedDataSetPath}" does not exist.`
+        );
+      }
+      // Ensures we are running tkyoDriftSetTraining.py correctly
+      const scriptPath = path.join(__dirname, 'tkyoDriftSetTraining.py');
       const pyProg = spawn('python3', [
         '-u',
-        './tkyoDriftSetTraining.py',
+        scriptPath,
         dataSetPath,
         inputName,
         outputName,
@@ -49,12 +69,12 @@ const tkyoDriftSetTraining = async (
       `Error in readFromBin for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
     );
   }
-};
+}
 
 // TODO Remove hardcoded path, input name, & output name
-const dataSetPath = './data';
-const inputName = 'problem';
-const outputName = 'solution';
+// const dataSetPath = './data';
+// const inputName = 'problem';
+// const outputName = 'solution';
 // input_name = "['conversations'][0]['value']"
 // output_name = "['conversations'][1]['value']"
-tkyoDriftSetTraining(dataSetPath, inputName, outputName);
+// tkyoDriftSetTraining(dataSetPath, inputName, outputName);
