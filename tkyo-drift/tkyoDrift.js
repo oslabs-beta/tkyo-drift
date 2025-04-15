@@ -252,7 +252,7 @@ export default async function tkyoDrift(text, ioType) {
 // await tkyoDrift("SELECT COUNT(*) FROM marine_species WHERE location = 'Southern Ocean';", "sql");
 // await tkyoDrift("This query counts the number of marine species found in the Southern Ocean by using the COUNT() function with a WHERE clause.", "sql_explanation");
 
-// Shit that should give SOME drift
+// // Shit that should give SOME drift
 // await tkyoDrift("forest stuff", "domain");  // lexical drift
 // await tkyoDrift("a bunch of data about wood and trees and animals and carbon and stuff like that", "domain_description");  // structural + lexical drift
 // await tkyoDrift("a simple join, I think", "sql_complexity");
@@ -286,7 +286,7 @@ export default async function tkyoDrift(text, ioType) {
 // await tkyoDrift("EXECUTE SELECT COUNT FROM marine_species WHERE region IS 'Southern Ocean';", "sql");
 // await tkyoDrift("Performs aggregation to quantify species localized in a southern hemispheric aquatic biome.", "sql_explanation");
 
-// Shit that should be completely orthogonal
+// // Shit that should be completely orthogonal
 // await tkyoDrift("astrology memes", "domain");
 // await tkyoDrift("Pictures of cats dressed as zodiac signs with personality captions", "domain_description");
 // await tkyoDrift("none lol", "sql_complexity");
