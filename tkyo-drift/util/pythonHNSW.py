@@ -83,7 +83,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     if (len(data) < 200):
         ef_construction = max(1, len(data) - 1)
     else:
-        ef_construction = 200
+        ef_construction = 300
         
     # Set M to len(data)-1 when len(data) is less than 16
     if (len(data) < 16):
@@ -107,7 +107,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     index.set_ef(ef_construction)
 
     # Destructuring labels and distances from the nearest neighbors query
-    labels, distances = index.knn_query(query, k=k)
+    labels, distances = index.knn_query(query, k=1)
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()

@@ -109,16 +109,64 @@ export class DriftModel {
       // Invoke the load model if it hasn't been done yet
       await this.loadModel();
 
-      let normalizeType = this.modelType === 'concept' ? false : true;
+      // Tokenize the input to check length
+      const tokens = await this.embeddingModel.tokenizer(text)
+      const tokenCount = tokens.input_ids.size
 
-      // Get the embedding for the input, save to object
-      const result = await this.embeddingModel(text, {
-        pooling: 'mean',
-        normalize: normalizeType,
-      });
+      const maxLength = 512
+      const stride = 256
 
-      // Save embedding to the object
-      this.embedding = result.data;
+      if (tokenCount < maxLength){
+        // Short Text found: embed normally
+        const result = await this.embeddingModel(text, {
+          pooling: 'mean',
+          normalize: false,
+        });
+
+        // Save embedding to the object
+        this.embedding = result.data;
+
+      } else {
+        // Long text found, embed each, and then average
+        const chunks = [];
+
+        for (let i = 0; i < tokenCount; i += stride){
+          const chunkIds = tokens.input_ids.data.slice(i, i + maxLength);
+
+          if (chunkIds.length === 0) break
+
+          const chunkText = this.embeddingModel.tokenizer.decode(chunkIds, {
+            skip_special_tokens: true
+          })
+
+          const result = await this.embeddingModel(chunkText, {
+            pooling: 'mean',
+            normalize: false,
+          });
+          
+          chunks.push(result.data)
+
+          if (i+maxLength >= tokenCount) break
+        }
+
+        // Average all chunk embeddings
+        const dim = chunks[0].length;
+        const avg = new Float32Array(dim);
+
+        for (let i = 0; i < chunks.length; i++) {
+          for (let j = 0; j < dim; j++) {
+            avg[j] += chunks[i][j];
+          }
+        }
+  
+        for (let j = 0; j < dim; j++) {
+          avg[j] /= chunks.length;
+        }
+
+        // Save embedding to the object
+        this.embedding = avg
+      }
+
 
       // Check if result.data exists and is a numeric array
       if (!(this.embedding instanceof Float32Array)) {
@@ -346,6 +394,8 @@ export class DriftModel {
 
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
+    // console.log(this.embedding, 'embedding', this.embeddingFilePath);
+    // console.log(this.vectorArray[0], 'vectorArray', this.embeddingFilePath);
     try {
       // Validate the embedding and baselines both exist
       if (
