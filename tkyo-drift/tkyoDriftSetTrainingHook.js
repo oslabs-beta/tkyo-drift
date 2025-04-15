@@ -69,20 +69,6 @@ export default async function tkyoDriftSetTraining (dataSetPath, ioType, ioTypeN
 
 // TODO Remove hardcoded path, input name, & output name
 
-// const dataSetPath = './data';
-// const inputName = 'problem';
-// const outputName = 'solution';
-// input_name = "['conversations'][0]['value']"
-// output_name = "['conversations'][1]['value']"
-// tkyoDriftSetTraining(dataSetPath, inputName, outputName);
-
-const dataSetPath = './data';
-// First call: embed the "problem" column as "problem"
-// await tkyoDriftSetTraining(dataSetPath, 'problem', 'problem');
-
-// // Second call: embed the "solution" column as "solution"
-// await tkyoDriftSetTraining(dataSetPath, 'solution', 'solution');
-
 await tkyoDriftSetTraining('./data', 'domain', 'domain');
 await tkyoDriftSetTraining('./data', 'domain_description', 'domain_description');
 await tkyoDriftSetTraining('./data', 'sql_complexity', 'sql_complexity');

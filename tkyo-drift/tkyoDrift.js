@@ -53,7 +53,7 @@ import captureSharedScalarMetrics from './util/captureSharedScalarMetrics.js';
 //  Models to embed the I/O Data
 export const MODELS = {
   semantic: 'Xenova/all-MiniLM-L12-v2', // Measures change in communication method
-  concept: 'Xenova/e5-base', // Measures change in communication intent
+  concept: 'Xenova/e5-base-v2', // Measures change in communication intent
   lexical: 'Xenova/all-MiniLM-L6-v2', // Measures change in syntax
 };
 // Location to save data files
