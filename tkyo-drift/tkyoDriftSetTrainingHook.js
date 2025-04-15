@@ -8,16 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 // Directory containing the file (tkyo-drift)
 const __dirname = path.dirname(__filename);
 
-export default async function tkyoDriftSetTraining(
-  dataSetPath,
-  inputName = 'input',
-  outputName = 'output'
-) {
-  
-const tkyoDriftSetTraining = async (dataSetPath, ioType, ioTypeName) => {
+export default async function tkyoDriftSetTraining (dataSetPath, ioType, ioTypeName) {
   try {
     return new Promise((resolve, reject) => {
-      // Creates a link between the data file and the inital function file
+      // Creates a link between the data file and the initial function file
       const resolvedDataSetPath = path.resolve(process.cwd(), dataSetPath);
 
       // Check if the dataset folder exists
