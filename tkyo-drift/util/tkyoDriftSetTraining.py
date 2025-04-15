@@ -2,8 +2,8 @@
 import sys
 sys.dont_write_bytecode = True
 # Import helper function to load and embed the data
-from util import pythonTrainingEmb
-from util.writeSharedScalars import write_shared_scalar_metrics
+import pythonTrainingEmb
+from writeSharedScalars import write_shared_scalar_metrics
 
 
 # Allows the use of time functions

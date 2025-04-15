@@ -3,7 +3,7 @@ import sys
 sys.dont_write_bytecode = True
 
 # Import helper function to create kmeans of data
-from util import pythonKMeans
+import pythonKMeans
 
 # This is good for vectors/matrices
 import numpy as np
