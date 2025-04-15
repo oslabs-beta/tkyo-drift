@@ -68,7 +68,6 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             "centroids": data.tolist(),
             "distances": None,
         }
-   
 
     # Set number of neighbors (k) based on dataset type
     if "kmeans" in file_path:

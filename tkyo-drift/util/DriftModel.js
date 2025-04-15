@@ -110,13 +110,13 @@ export class DriftModel {
       await this.loadModel();
 
       // Tokenize the input to check length
-      const tokens = await this.embeddingModel.tokenizer(text)
-      const tokenCount = tokens.input_ids.size
+      const tokens = await this.embeddingModel.tokenizer(text);
+      const tokenCount = tokens.input_ids.size;
 
-      const maxLength = 512
-      const stride = 256
+      const maxLength = 512;
+      const stride = 256;
 
-      if (tokenCount < maxLength){
+      if (tokenCount < maxLength) {
         // Short Text found: embed normally
         const result = await this.embeddingModel(text, {
           pooling: 'mean',
@@ -125,28 +125,27 @@ export class DriftModel {
 
         // Save embedding to the object
         this.embedding = result.data;
-
       } else {
         // Long text found, embed each, and then average
         const chunks = [];
 
-        for (let i = 0; i < tokenCount; i += stride){
+        for (let i = 0; i < tokenCount; i += stride) {
           const chunkIds = tokens.input_ids.data.slice(i, i + maxLength);
 
-          if (chunkIds.length === 0) break
+          if (chunkIds.length === 0) break;
 
           const chunkText = this.embeddingModel.tokenizer.decode(chunkIds, {
-            skip_special_tokens: true
-          })
+            skip_special_tokens: true,
+          });
 
           const result = await this.embeddingModel(chunkText, {
             pooling: 'mean',
             normalize: false,
           });
-          
-          chunks.push(result.data)
 
-          if (i+maxLength >= tokenCount) break
+          chunks.push(result.data);
+
+          if (i + maxLength >= tokenCount) break;
         }
 
         // Average all chunk embeddings
@@ -158,15 +157,14 @@ export class DriftModel {
             avg[j] += chunks[i][j];
           }
         }
-  
+
         for (let j = 0; j < dim; j++) {
           avg[j] /= chunks.length;
         }
 
         // Save embedding to the object
-        this.embedding = avg
+        this.embedding = avg;
       }
-
 
       // Check if result.data exists and is a numeric array
       if (!(this.embedding instanceof Float32Array)) {
@@ -394,8 +392,10 @@ export class DriftModel {
 
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
-    // console.log(this.embedding, 'embedding', this.embeddingFilePath);
-    // console.log(this.vectorArray[0], 'vectorArray', this.embeddingFilePath);
+    console.log(this.modelType, ' ', this.baselineType);
+    console.log(this.embedding[10]);
+    console.log(this.vectorArray[0][10]);
+
     try {
       // Validate the embedding and baselines both exist
       if (
@@ -412,34 +412,22 @@ export class DriftModel {
         );
       }
 
+      // Normalize both vectors to unit length
+      const normalize = (vec) => {
+        const mag = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+        return vec.map((v) => v / mag);
+      };
+
+      const a = normalize(this.embedding);
+      const b = normalize(this.baselineArray);
+
       // Calculate the dot product of the A and B arrays
       let dotProduct = 0;
       for (let i = 0; i < this.dimensions; i++) {
-        dotProduct += this.embedding[i] * this.baselineArray[i];
+        dotProduct += a[i] * b[i];
       }
-
-      // Calculate the magnitude of A
-      const magnitudeA = Math.sqrt(
-        this.embedding.reduce((sum, a) => sum + a * a, 0)
-      );
-
-      // Calculate the magnitude of B
-      const magnitudeB = Math.sqrt(
-        this.baselineArray.reduce((sum, b) => sum + b * b, 0)
-      );
-
-      // Calculate the denominator
-      const denominator = magnitudeA * magnitudeB;
-
-      // Validate that the denominator is not 0
-      if (denominator === 0) {
-        throw new Error(
-          'Zero magnitude detected in cosine similarity calculation.'
-        );
-      }
-
-      // Return the cosine similarity between A and B, clamping the results to prevent rounding errors
-      return Math.min(1, dotProduct / denominator);
+      
+      return Math.min(1, Math.max(-1, dotProduct));
     } catch (error) {
       throw new Error(
         `Error in getCosineSimilarity for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`

@@ -218,23 +218,13 @@ export default async function tkyoDrift(text, ioType) {
 }
 
 // TODO: Remove hardcoded input/output values
-const input = 'How do the properties of the catalyst and the reaction conditions affect the rate of a heterogeneous catalytic reaction? Provide a detailed explanation with examples.';
-const output = `**Solution:**
-The rate of a heterogeneous catalytic reaction is governed by **catalyst properties** and **reaction conditions**:
-
-1. **Catalyst Properties:**
-- **Surface Area:** Higher surface area (e.g., finely divided iron in the Haber-Bosch process) increases active sites, boosting reaction rate.
-- **Active Site Density:** More sites per unit area enhance adsorption (e.g., Co catalysts in Fischer-Tropsch synthesis).
-- **Structure/Morphology:** Porous or nanostructured catalysts (e.g., zeolites) improve reactant access and selectivity.
-- **Electronic Properties:** Oxidation state and electron density influence adsorption strength (e.g., Au nanoparticles for alcohol oxidation).
-
-2. **Reaction Conditions:**
-- **Temperature:** Increases rate by raising kinetic energy but may deactivate catalysts via sintering (e.g., metal catalysts at high temps).
-- **Pressure:** Enhances reactant adsorption (e.g., high pressure in Haber-Bosch for N₂/H₂ adsorption on Fe).
-- **Reactant Concentration:** Higher concentration increases collision frequency with active sites.
-- **Promoters/Inhibitors:** Promoters like Al₂O₃ in Haber-Bosch improve catalyst efficiency; inhibitors block sites (e.g., sulfur poisoning in Ni catalysts).
-
-Optimizing these factors ensures efficient catalysis, balancing activity and stability for industrial applications like ammonia synthesis or hydrocarbon production.`;
-// await tkyoDrift(input, 'problem');
-// await tkyoDrift(output, 'solution');
-await tkyoDrift("The quick brown fox jumps over the lazy dog.", "test")
+// await tkyoDrift("forestry", "domain");
+// await tkyoDrift("Comprehensive data on sustainable forest management, timber production, wildlife habitat, and carbon sequestration in forestry.", "domain_description");
+// await tkyoDrift("single join", "sql_complexity");
+// await tkyoDrift("only one join (specify inner, outer, cross)", "sql_complexity_description");
+// await tkyoDrift("analytics and reporting", "sql_task_type");
+// await tkyoDrift("generating reports, dashboards, and analytical insights", "sql_task_type_description");
+// await tkyoDrift("CREATE TABLE salesperson (salesperson_id INT, name TEXT, region TEXT); INSERT INTO salesperson (salesperson_id, name, region) VALUES (1, 'John Doe', 'North'), (2, 'Jane Smith', 'South'); CREATE TABLE timber_sales (sales_id INT, salesperson_id INT, volume REAL, sale_date DATE); INSERT INTO timber_sales (sales_id, salesperson_id, volume, sale_date) VALUES (1, 1, 120, '2021-01-01'), (2, 1, 150, '2021-02-01'), (3, 2, 180, '2021-01-01');", "sql_context");
+await tkyoDrift("Joins timber_sales and salesperson tables, groups sales by salesperson, calculates total volume sold by each salesperson, and orders the results by total volume in descending order.", "sql_explanation");
+// await tkyoDrift("What is the total volume of timber sold by each salesperson, sorted by salesperson?", "sql_prompt");
+// await tkyoDrift("SELECT salesperson_id, name, SUM(volume) as total_volume FROM timber_sales JOIN salesperson ON timber_sales.salesperson_id = salesperson.salesperson_id GROUP BY salesperson_id, name ORDER BY total_volume DESC;", "sql");
