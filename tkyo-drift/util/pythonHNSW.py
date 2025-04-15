@@ -49,9 +49,9 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             # Keep only the most recent 1,000 entries when we are reading from rolling.
                 reshaped_data = reshaped_data[-1000:-1]
 
-            # If we're in training, we'll only read the most recent 500,000. This will not cause problems with existing training data sets greater than that amount because anything 500,000 and above will receive k-means clustering. In this case we'll be reading from the rolling file, which can get infinitely large, theoretically.
+            # If we're in training, we'll only read the most recent 100,000. This will not cause problems with existing training data sets greater than that amount because anything 100,000 and above will receive k-means clustering. In this case we'll be reading from the rolling file, which can get infinitely large, theoretically.
             elif baseline_type == 'training':
-                reshaped_data = reshaped_data[:500000]
+                reshaped_data = reshaped_data[:100000]
             
             # Set num vectors equal to the actual number we pulled from the reshaped data
             num_vectors = len(reshaped_data)

@@ -19,6 +19,7 @@
     "cli-table3": "^0.6.5",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
+    "tkyodrifttest1": "^1.0.0",
     "uuid": "^11.1.0"
   },
   "type": "module"

@@ -96,7 +96,7 @@ export class DriftModel {
   // * Function to make an embedding from an input/output pair
   async makeEmbedding(text) {
     try {
-      // Validate I/O text is not null/undefined/empty
+      // Validate that the text is not null/undefined/empty
       if (typeof text !== 'string' || text.trim() === '') {
         throw new Error(
           'Expected a non-empty string but received invalid input.'
@@ -106,7 +106,7 @@ export class DriftModel {
       // Invoke the load model if it hasn't been done yet
       await this.loadModel();
 
-      // Tokenize the input to check length
+      // Tokenize the text to check length
       const tokens = await this.embeddingModel.tokenizer(text);
       const tokenCount = tokens.input_ids.size;
 
@@ -410,13 +410,6 @@ export class DriftModel {
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
     try {
-      const embNorm = Math.sqrt(
-        this.embedding.reduce((sum, v) => sum + v * v, 0)
-      );
-      const vecNorm = Math.sqrt(
-        this.baselineArray.reduce((sum, v) => sum + v * v, 0)
-      );
-
       // Validate the embedding and baselines both exist
       if (
         !(this.embedding instanceof Float32Array) ||
@@ -444,7 +437,7 @@ export class DriftModel {
       // Calculate the dot product of the A and B arrays
       let dotProduct = 0;
       for (let i = 0; i < this.dimensions; i++) {
-        dotProduct += this.embedding[i] * this.baselineArray[i];
+        dotProduct += a[i] * b[i];
       }
 
       return dotProduct; // Math.min(1, Math.max(-1, dotProduct));

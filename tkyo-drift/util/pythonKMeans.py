@@ -21,7 +21,7 @@ def kMeansClustering(embeddings):
     dims = len(embeddings[0])
 
     # Determines the amount of clusters
-    num_of_clusters = int(np.sqrt(num_vectors / 2))
+    num_of_clusters = int(np.sqrt(num_vectors / 2)*10)
 
     # Initialize the KMeans clustering algorithm with specific parameters:
     # random_state: Seed for random number generator to ensure reproducibility

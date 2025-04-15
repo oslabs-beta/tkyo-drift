@@ -30,10 +30,6 @@ export default function makeLogEntry(id, mathObject, type) {
   }
 
   // Grab the model types from any incoming ioType
-  // const modelTypes = Object.keys(
-  //   Object.values(grouped[0]) || {}
-  // );
-
   const modelTypes = Object.keys(Object.values(grouped)[0]);
 
   // or dynamically detect if needed
