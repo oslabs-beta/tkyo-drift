@@ -95,6 +95,7 @@ TODO: Update this when the NPM package is built.
 ```bash
 npm install tkyoDrift
 ```
+
 2. Install the Python Dependencies:
 
 ```bash
@@ -193,6 +194,7 @@ This table represents a sample runtime breakdown of the one-off embedding flow, 
 ![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](hardware.png)
 
 Your actual performance will vary depending on:
+
 - Hardware (CPU vs GPU, disk speed)
 - Token length and input size
 - Number and type of models used
@@ -223,17 +225,18 @@ IMPORTANT! The set training data file should ONLY be run when you intend on repl
 
 There should only be ONE set of ideal embeddings for your training data, per ioType.
 ```
+
 As an additional note, the batch embedding tool is designed to indiscriminantly ingest all `.arrow` files in the directory you specify. If needed, nest your training data in a subdirectory to avoid ingesting data other than your intended files.
 
 ---
 
 ### Example Input Structure:
 
-Should you have access to training data, you must choose a ioType to associate it with. Preferably, you choose tags for your training data that also exists in your expected one-off function calls to `tkyoDrift(text, ioType)`. For example, a training dataset that contains  problem/solution should have the problem paired with new user inputs (by giving them the same tag), while the solution should be paired with new AI outputs (by giving these the same tag).
+Should you have access to training data, you must choose an ioType to associate it with. Preferably, you choose tags for your training data that also exists in your expected one-off function calls to `tkyoDrift(text, ioType)`. For example, a training dataset that contains problem/solution should have the problem paired with new user inputs (by giving them the same tag), while the solution should be paired with new AI outputs (by giving these the same tag).
 
-In general, the idea is that **a training baseline is only comparable against data that shares  the same ioType**, which is how the system will know which rolling data corresponds with what training data.
+In general, the idea is that **a training baseline is only comparable against data that shares the same ioType**, which is how the system will know which rolling data corresponds with what training data.
 
-When passing the file path,  column header, and tag name into the `tkyoDriftSetTrainingHook.js` function, your object can be structured in the following way:
+When passing the file path, column header, and tag name into the `tkyoDriftSetTrainingHook.js` function, your object can be structured in the following way:
 
 ---
 
@@ -251,10 +254,11 @@ If your dataset is structured like this:
 You can call:
 
 ```js
-tkyoDriftSetTraining(dataPath, 'input', ioType);
-tkyoDriftSetTraining(dataPath, 'output', ioType);
+tkyoDriftSetTraining(dataPath, 'input', 'userInputText');
+tkyoDriftSetTraining(dataPath, 'output', 'aiOutputText');
 ```
-Where ioType is some semantic name you choose for each data type.
+
+Where the second argument is the key in the object you want to embed, and the 3rd argument is some semantic name you choose for that key.
 
 ---
 
@@ -275,12 +279,12 @@ If your data has nested fields, such as:
 You can use bracket notation to specify the path:
 
 ```js
-tkyoDriftSetTraining(dataPath, "['conversations'][0]['value']", ioType);
-tkyoDriftSetTraining(dataPath, "['conversations'][1]['value']", ioType);
-tkyoDriftSetTraining(dataPath, "['conversations'][2]['value']", ioType);
+tkyoDriftSetTraining(dataPath, "['conversations'][0]['value']", 'user');
+tkyoDriftSetTraining(dataPath, "['conversations'][1]['value']", 'assistant');
+tkyoDriftSetTraining(dataPath, "['conversations'][2]['value']", 'system');
 ```
 
-Where ioType is some semantic name you choose for each data type. This lets you embed specific messages or roles within a conversation.
+Where once again the second argument is the location within the array you would like to embed, and the third argument is some semantic name you choose for each data type. This lets you embed specific messages or roles within a conversation.
 
 ---
 
@@ -290,18 +294,19 @@ Some HuggingFace Datasets may return data like this during `map()` operations:
 
 ```json
 {
-  "input": ["Prompt 1", "Prompt 2", "Prompt 3"...],
-  "output": ["Response 1", "Response 2", "Response 3"...]
+  "input": ["Problem 1", "Problem 2", "Problem 3"...],
+  "output": ["Solution 1", "Solution 2", "Solution 3"...]
 }
 ```
 
 This is also supported — each row will be reconstructed before accessing your field. Just call the function like so:
 
 ```js
-tkyoDriftSetTraining(dataPath, 'input', ioType);
-tkyoDriftSetTraining(dataPath, 'output', ioType);
+tkyoDriftSetTraining(dataPath, 'input', 'problem');
+tkyoDriftSetTraining(dataPath, 'output', 'solution');
 ```
-Again, where ioType is a semantic name you choose for the data type.
+
+Again, the second argument is the key for the object you would like to embed and the third argument is a semantic name you choose for that data type.
 
 ## Logging
 
@@ -447,17 +452,16 @@ In the event that there is no training data supplied to the system, the Drift an
 
 Embeddings are saved in `.bin` files using float32 for efficient storage. We chose to make a custom bin writer and reader because bins have tiny overhead and force us to drop repeating characters like object braces and array brackets. Since this system is intended to work with potentially millions of embeddings, this minimizes disk I/O and enables fast appending.
 
-- Each file is named:  
-  `{modelType}.{ioType}.{baselineType}.bin`
+- Each file is named: `{modelType}.{ioType}.{baselineType}.bin`
 
 This yields `(models * I/Os * baselines)` file combinations, and at the minimum should represent one file if you are using a single drift model for a single ioType using only the rolling baseline.
 
 At the time of writing, the default models in this library have either 768 or 384 dimensions per input.
 
-| Model                      | Purpose                         | Dimensions | Bytes per Input (float16) | File Size (1,000,000 inputs) |
-| -------------------------- | ------------------------------- | ---------- | ------------------------- | ---------------------------- |
+| Model               | Purpose                         | Dimensions | Bytes per Input (float16) | File Size (1,000,000 inputs) |
+| ------------------- | ------------------------------- | ---------- | ------------------------- | ---------------------------- |
 | `all-MiniLM-L12-v2` | Semantic (communication method) | 384        | 768 bytes                 | ~750 MB                      |
-| `e5-base-v2`           | Concept (communication intent)  | 768        | 1,536 bytes               | ~1.5 GB                      |
+| `e5-base-v2`        | Concept (communication intent)  | 768        | 1,536 bytes               | ~1.5 GB                      |
 | `all-MiniLM-L6-v2`  | Lexical (syntax)                | 384        | 768 bytes                 | ~750 MB                      |
 
 Note: 1 MB = 1,048,576 bytes (binary MB), but here we're rounding to 1 MB = 1,000,000 bytes for simplicity.
@@ -493,7 +497,7 @@ HNSW (Hierarchical Navigable Small World) allows us to support approximate neare
 HNSW creation is factored into the `readFromBin()` model class method (which calls on `pythonHNSW.py`), and is fast enough that we re-calculate the HNSW on every read.
 
 ```
-If this feels inefficient to you, the code in pythonHNSW.py can be refactored to use the saveIndex and loadIndex methods an HNSW index file read an existing index from disk. @ 50,000 embeddings, building the HNSW added 5ms to the process so we opted not take this step. 
+If this feels inefficient to you, the code in pythonHNSW.py can be refactored to use the saveIndex and loadIndex methods an HNSW index file read an existing index from disk. @ 50,000 embeddings, building the HNSW added 5ms to the process so we opted not take this step.
 ```
 
 # The Math
@@ -504,7 +508,7 @@ The core calculation behind drift tracking is **cosine similarity**, which evalu
 
 The cosine similarity between two vectors **A** and **B** is calculated as:
 
-```cosine_similarity(A, B) = (A · B) / (||A|| * ||B||)```
+`cosine_similarity(A, B) = (A · B) / (||A|| * ||B||)`
 
 Where:
 
@@ -549,12 +553,12 @@ In addition to vector-based drift (cosine similarity and Euclidean distance), TK
 
 Each metric is computed as follows:
 
-- `norm`:               L2 norm (vector magnitude) from the output embedding.
-- `textLength`:         Length of the raw string.
-- `entropy`:            Shannon entropy over character frequencies.
-- `avgWordLength`:      Mean word length based on whitespace splitting.
+- `norm`: L2 norm (vector magnitude) from the output embedding.
+- `textLength`: Length of the raw string.
+- `entropy`: Shannon entropy over character frequencies.
+- `avgWordLength`: Mean word length based on whitespace splitting.
 - `punctuationDensity`: Punctuation count divided by total chars.
-- `uppercaseRatio`:     Uppercase count divided by total chars.
+- `uppercaseRatio`: Uppercase count divided by total chars.
 
 These are implemented in both JS (for rolling ingestion) and Python (for training ingestion) and saved alongside vector data.
 
@@ -585,7 +589,7 @@ These deltas are printed in the CLI printout with color-coded thresholds (green/
 
 TKYO Drift calculates the **Population Stability Index (PSI)** for all scalar metrics when comparing rolling data against the training baseline. PSI quantifies how much a distribution has shifted over time, and is commonly used in production monitoring to detect silent model degradation.
 
-For each scalar metric, the PSI score is computed using automatically configured  bins and normalized frequency distributions from both the rolling and training datasets.
+For each scalar metric, the PSI score is computed using automatically configured bins and normalized frequency distributions from both the rolling and training datasets.
 
 The PSI interpretation follows standard thresholds:
 
@@ -657,10 +661,10 @@ Its worth building. We should have. We didn't.
 
 ## Contributing
 
-We welcome contributions, ideas, and pull requests!  
+We welcome contributions, ideas, and pull requests!
 If you’d like to improve TKYO Drift, feel free to fork the repo and submit a PR.
 
-Before getting started, check out any open issues and see if you can help.  
+Before getting started, check out any open issues and see if you can help.
 If you'd like to propose a feature, feel free to open a discussion or ticket.
 
 ## License
