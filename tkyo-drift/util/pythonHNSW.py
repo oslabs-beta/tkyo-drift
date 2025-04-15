@@ -93,7 +93,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     # Initialize HNSW index
 
     # 'l2' = Euclidean distance
-    index = hnswlib.Index(space="l2", dim=dims)
+    index = hnswlib.Index(space="cosine", dim=dims)
 
     # Build the index
     # ef_construction : Controls build speed/accuracy trade-off
@@ -102,6 +102,9 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
 
     # Add data to the index
     index.add_items(data)
+
+    # Set ef for the query
+    index.set_ef(ef_construction)
 
     # Destructuring labels and distances from the nearest neighbors query
     labels, distances = index.knn_query(query, k=k)

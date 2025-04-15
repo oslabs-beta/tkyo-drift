@@ -62,10 +62,9 @@ export const OUTPUT_DIR = path.resolve('./data');
 // Cache of pipeline output results, to speed up model loading
 export const MODEL_CACHE = {};
 // Cache of assembled models, exported for CLI tool
-export const IO_TYPES = ['input', 'output'];
 export const BASELINE_TYPES = ['rolling', 'training'];
 
-export default async function tkyoDrift(input, output, depth = 0) {
+export default async function tkyoDrift(text, ioType) {
   // Stopwatch START 🏎️
   console.time('Drift Analyzer Full Run');
 
@@ -84,11 +83,18 @@ export default async function tkyoDrift(input, output, depth = 0) {
   //  ------------- << BEGIN try/catch Error Handling >> -------------
   // * Error handling is done within model method calls, which send the error to the catch block.
   try {
-    // Validate that the depth counter is both a number and not negative
-    if (!Number.isInteger(depth) || depth < 0) {
-      throw new Error(
-        `Invalid depth value: must be a non-negative integer. Got: ${depth}`
-      );
+    // Check if directory exists
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
+
+    // Create subdirectories for vectors, scalars, and logs
+    const subdirectories = ['vectors', 'scalars', 'logs'];
+    for (const dir of subdirectories) {
+      const subdirPath = path.join(OUTPUT_DIR, dir);
+      if (!fs.existsSync(subdirPath)) {
+        fs.mkdirSync(subdirPath, { recursive: true });
+      }
     }
 
     //  ------------- << Construct Model Combinations >> -------------
@@ -96,16 +102,14 @@ export default async function tkyoDrift(input, output, depth = 0) {
       // * For each model, for each ioType, for each baselineType,
       // make a model and assign to driftModels object
       for (const [modelType, modelName] of Object.entries(MODELS)) {
-        for (const ioType of IO_TYPES) {
-          for (const baselineType of BASELINE_TYPES) {
-            const key = `${modelType}.${ioType}.${baselineType}`;
-            driftModels[key] = new DriftModel(
-              modelType,
-              modelName,
-              ioType,
-              baselineType
-            );
-          }
+        for (const baselineType of BASELINE_TYPES) {
+          const key = `${modelType}.${ioType}.${baselineType}`;
+          driftModels[key] = new DriftModel(
+            modelType,
+            modelName,
+            ioType,
+            baselineType
+          );
         }
       }
     } catch (error) {
@@ -124,56 +128,33 @@ export default async function tkyoDrift(input, output, depth = 0) {
     //  ------------- << Load the Xenova Models >> -------------
     // * Load all models sequentially
     // ! NOTE: Loading models sequentially is intentional, as they check the cache before attempting to load
-    for (const model of Object.values(driftModels)) {
-      await model.loadModel();
-    }
+    await Promise.all(
+      Object.values(driftModels).map(async (model) => model.loadModel())
+    );
 
     //  ------------- << Get Embeddings >> -------------
     // * Get embeddings for all inputs and outputs in parallel
     await Promise.all(
-      Object.entries(driftModels).map(([key, model]) => {
-        const isInput = key.includes('.input.');
-        const text = isInput ? input : output;
-        return model.makeEmbedding(text);
-      })
+      Object.values(driftModels).map(async (model) => model.makeEmbedding(text))
     );
 
     //  ------------- << Get Scalar Metrics >> -------------
     // Capture shared scalar metrics once for each I/O type, for each baseline type
-    for (const ioType of IO_TYPES) {
-      const text = ioType === 'input' ? input : output;
-      captureSharedScalarMetrics(text, ioType);
-    }
+    captureSharedScalarMetrics(text, ioType);
 
     // * Calculate PSI values for scalar metric comparison
     await Promise.all(
-      Object.entries(driftModels).map(async ([key, model]) => {
-        const isInput = key.includes('.input.');
-        const text = isInput ? input : output;
+      Object.values(driftModels).map(async (model) => {
         model.captureModelSpecificScalarMetrics(text);
       })
     );
 
+
     //  ------------- << Save Embedding Data >> -------------
     // * Save the embedding to the rolling/training files in parallel
     // ! NOTE: Write ops are done to separate files, this is safe
-    // Check if directory exists
-    if (!fs.existsSync(OUTPUT_DIR)) {
-      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    }
-
-    // Create subdirectories for vectors, scalars, and logs
-    const subdirectories = ['vectors', 'scalars', 'logs'];
-    for (const dir of subdirectories) {
-      const subdirPath = path.join(OUTPUT_DIR, dir);
-      if (!fs.existsSync(subdirPath)) {
-        fs.mkdirSync(subdirPath, { recursive: true });
-      }
-    }
-
-    // For each model, write to disk
     await Promise.all(
-      Object.values(driftModels).map((model) => model.saveToBin())
+      Object.values(driftModels).map(async (model) => model.saveToBin())
     );
 
     //  ------------- << Save Scalar Data >> -------------
@@ -181,9 +162,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
     // Capture unique scalar metrics for each embedding model
     // ! NOTE: Write ops are done to separate files, this is safe
     await Promise.all(
-      Object.values(driftModels).map((model) =>
-        model.saveScalarMetrics()
-      )
+      Object.values(driftModels).map(async (model) => model.saveScalarMetrics())
     );
 
     //  ------------- << Read Bin Files >> -------------
@@ -192,7 +171,7 @@ export default async function tkyoDrift(input, output, depth = 0) {
     // ? See Training Max Size/Rolling Max Size in ReadMe for more info
     // For each model, read from disk
     await Promise.all(
-      Object.values(driftModels).map((model) => model.readFromBin())
+      Object.values(driftModels).map(async (model) => model.readFromBin())
     );
 
     //  ------------- << Get Baseline >> -------------
@@ -224,8 +203,8 @@ export default async function tkyoDrift(input, output, depth = 0) {
     // * Push the results to each log
     // Make shared ID and date for I/O Pair
     const sharedID = v4();
-    makeLogEntry(sharedID, similarityResults, 'COS', depth);
-    makeLogEntry(sharedID, distanceResults, 'EUC', depth);
+    makeLogEntry(sharedID, similarityResults, 'COS');
+    makeLogEntry(sharedID, distanceResults, 'EUC');
 
     //  ------------- << END try/catch Error Handling >> -------------
     // * Push any errors to the error log
@@ -239,7 +218,27 @@ export default async function tkyoDrift(input, output, depth = 0) {
 }
 
 // TODO: Remove hardcoded input/output values
+
 // const input =
 //   'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
 // const output = 'I am sorry, but I do know know how to respond to this request.';
 // tkyoDrift(input, output);
+const input = 'How do the properties of the catalyst and the reaction conditions affect the rate of a heterogeneous catalytic reaction? Provide a detailed explanation with examples.';
+const output = `**Solution:**
+The rate of a heterogeneous catalytic reaction is governed by **catalyst properties** and **reaction conditions**:
+
+1. **Catalyst Properties:**
+- **Surface Area:** Higher surface area (e.g., finely divided iron in the Haber-Bosch process) increases active sites, boosting reaction rate.
+- **Active Site Density:** More sites per unit area enhance adsorption (e.g., Co catalysts in Fischer-Tropsch synthesis).
+- **Structure/Morphology:** Porous or nanostructured catalysts (e.g., zeolites) improve reactant access and selectivity.
+- **Electronic Properties:** Oxidation state and electron density influence adsorption strength (e.g., Au nanoparticles for alcohol oxidation).
+
+2. **Reaction Conditions:**
+- **Temperature:** Increases rate by raising kinetic energy but may deactivate catalysts via sintering (e.g., metal catalysts at high temps).
+- **Pressure:** Enhances reactant adsorption (e.g., high pressure in Haber-Bosch for N₂/H₂ adsorption on Fe).
+- **Reactant Concentration:** Higher concentration increases collision frequency with active sites.
+- **Promoters/Inhibitors:** Promoters like Al₂O₃ in Haber-Bosch improve catalyst efficiency; inhibitors block sites (e.g., sulfur poisoning in Ni catalysts).
+
+Optimizing these factors ensures efficient catalysis, balancing activity and stability for industrial applications like ammonia synthesis or hydrocarbon production.`;
+// await tkyoDrift(input, 'problem');
+// await tkyoDrift(output, 'solution');

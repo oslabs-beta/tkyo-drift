@@ -13,6 +13,8 @@ export default async function tkyoDriftSetTraining(
   inputName = 'input',
   outputName = 'output'
 ) {
+  
+const tkyoDriftSetTraining = async (dataSetPath, ioType, ioTypeName) => {
   try {
     return new Promise((resolve, reject) => {
       // Creates a link between the data file and the inital function file
@@ -31,8 +33,8 @@ export default async function tkyoDriftSetTraining(
         '-u',
         scriptPath,
         dataSetPath,
-        inputName,
-        outputName,
+        ioType,
+        ioTypeName,
       ]);
 
       let result = '';
@@ -72,9 +74,17 @@ export default async function tkyoDriftSetTraining(
 }
 
 // TODO Remove hardcoded path, input name, & output name
+
 // const dataSetPath = './data';
 // const inputName = 'problem';
 // const outputName = 'solution';
 // input_name = "['conversations'][0]['value']"
 // output_name = "['conversations'][1]['value']"
 // tkyoDriftSetTraining(dataSetPath, inputName, outputName);
+
+const dataSetPath = './data';
+// First call: embed the "problem" column as "problem"
+await tkyoDriftSetTraining(dataSetPath, 'problem', 'problem');
+
+// Second call: embed the "solution" column as "solution"
+await tkyoDriftSetTraining(dataSetPath, 'solution', 'solution');

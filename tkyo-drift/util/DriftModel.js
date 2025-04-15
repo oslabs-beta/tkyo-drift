@@ -8,12 +8,11 @@ import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
 import { fileURLToPath } from 'url';
 
 export class DriftModel {
-  constructor(modelType, modelName, ioType, baselineType, depth = 0) {
+  constructor(modelType, modelName, ioType, baselineType) {
     this.baselineType = baselineType;
     this.modelType = modelType;
     this.modelName = modelName;
     this.ioType = ioType;
-    this.depth = depth;
     this.distance = null;
     this.embedding = null;
     this.byteOffset = null;
@@ -461,7 +460,6 @@ export class DriftModel {
     try {
       // Skip if training — this method is only for rolling baseline
       if (this.baselineType === 'training') return;
-
       // Calculate vector L2 norm
       const norm = Math.sqrt(
         this.embedding.reduce((sum, val) => sum + val * val, 0)
