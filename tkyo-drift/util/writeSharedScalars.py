@@ -7,7 +7,7 @@ from datetime import datetime
 from pythonTrainingEmb import resolve_io_column
 
 # * Writes shared scalar metrics (like character length, entropy, etc.) for training data
-# * One file is created per metric per I/O type (e.g., input.characterLength.training.scalar.jsonl)
+# * One file is created per metric (e.g., ioTypeName.characterLength.training.scalar.jsonl)
 def write_shared_scalar_metrics(data_path, io_type, io_type_name):
     # Load all `.arrow` files from the provided dataset directory
     arrow_files = [

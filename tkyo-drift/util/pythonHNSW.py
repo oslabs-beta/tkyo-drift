@@ -49,9 +49,9 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             # Keep only the most recent 1,000 entries when we are reading from rolling.
                 reshaped_data = reshaped_data[-1000:-1]
 
-            # If we're in training, we'll only read the most recent 10,000. This will not cause problems with existing training data sets greater than that amount because anything 10,000 and above will receive k-means clustering. In this case we'll be reading from the rolling file, which can get infinitely large, theoretically.
+            # If we're in training, we'll only read the most recent 500,000. This will not cause problems with existing training data sets greater than that amount because anything 500,000 and above will receive k-means clustering. In this case we'll be reading from the rolling file, which can get infinitely large, theoretically.
             elif baseline_type == 'training':
-                reshaped_data = reshaped_data[:10000]
+                reshaped_data = reshaped_data[:500000]
             
             # Set num vectors equal to the actual number we pulled from the reshaped data
             num_vectors = len(reshaped_data)
@@ -80,7 +80,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     if (len(data) < 200):
         ef_construction = max(1, len(data) - 1)
     else:
-        ef_construction = 300
+        ef_construction = 200
         
     # Set M to len(data)-1 when len(data) is less than 16
     if (len(data) < 16):
@@ -100,8 +100,8 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     # Add data to the index
     index.add_items(data)
 
-    # Set ef for the query
-    index.set_ef(200)
+    # Set ef for the query. 50 is a pretty standard number, but a higher ef will yield more accuracy at the cost of time. If you can handle more time, you can increase this value. If you want it to run faster, you can lower it. We recommend staying above 50.
+    index.set_ef(75)
 
     # Destructuring labels and distances from the nearest neighbors query
     labels, distances = index.knn_query(query, k=k)

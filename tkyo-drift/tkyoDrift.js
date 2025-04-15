@@ -199,7 +199,7 @@ export default async function tkyoDrift(text, ioType) {
 
     //  ------------- << Make & Append Log Entries >> -------------
     // * Push the results to each log
-    // Make shared ID and date for I/O Pair
+    // Make shared ID and date for the cosine and Euclidean logs
     const sharedID = v4();
     makeLogEntry(sharedID, similarityResults, 'COS');
     makeLogEntry(sharedID, distanceResults, 'EUC');

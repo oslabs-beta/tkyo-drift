@@ -228,9 +228,9 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
     # Create data directories if they doesn't exist
     os.makedirs("data/vectors", exist_ok=True)
-
-    if len(embeddings) < 1000000:
-        print(f"You have < 1000000 {io_type} embeddings: Saving unfiltered embeddings to data directory.")
+    #If you change the threshold below (currently 500,000), make sure you also change it on line 54 of pythonHNSW.py. Otherwise you will clip your training data set.
+    if len(embeddings) < 500000:
+        print(f"You have < 500000 {io_type} embeddings: Saving unfiltered embeddings to data directory.")
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
 
@@ -249,7 +249,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             # Then write the data
             embeddings.astype(np.float32).tofile(f)
     else:
-        print(f"You have >=  1000000 {io_type} embeddings: Performing K Means analysis to filter embeddings.")
+        print(f"You have >=  500000 {io_type} embeddings: Performing K Means analysis to filter embeddings.")
         kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
 
         # Assign the number of vectors for the training data
