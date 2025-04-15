@@ -218,6 +218,12 @@ export default async function tkyoDrift(text, ioType) {
 }
 
 // TODO: Remove hardcoded input/output values
+
+// const input =
+//   'Describe how the context surrounding the shape of a vector determines how much drift might occur when analyzed using cosine similarity.';
+// const output = 'I am sorry, but I do know know how to respond to this request.';
+// tkyoDrift(input, output);
+
 // Shit from the actual database, should give no drift
 // await tkyoDrift("forestry", "domain");
 // await tkyoDrift("Comprehensive data on sustainable forest management, timber production, wildlife habitat, and carbon sequestration in forestry.", "domain_description");
