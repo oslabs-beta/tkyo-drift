@@ -613,7 +613,9 @@ Building this would require adding a date to the binary file write method to sto
 
 ### Picking a better K value
 
-The current implementation sets K using a heuristic: K = int(sqrt(num_vectors / 2)), which balances clustering granularity with speed. While the elbow method offers a more statistically grounded way to choose K by evaluating clustering performance across several K values, it is computationally intensive.
+The current implementation sets K using a heuristic: K = int(sqrt(num_vectors / 2)) if your training data includes at least 500,000 records. This means that there is an accuracy shift that kicks in at exactly 500,000 records. Before this point, the system will retrieve the nearest neighbor from all 500,000 points but after this point we will be searching from 500 records.
+
+While the elbow method offers a more statistically grounded way to choose K by evaluating clustering performance across several K values, it is computationally intensive.
 
 Implementing the elbow method would require running KMeans multiple times and analyzing metrics like SSE or silhouette scores. Given our real-time and batch constraints, we avoid this due to diminishing accuracy gains (often logarithmic) versus increased computational cost (often linear to exponential with larger datasets).
 
