@@ -110,16 +110,62 @@ export class DriftModel {
       // Invoke the load model if it hasn't been done yet
       await this.loadModel();
 
-      let normalizeType = this.modelType === 'concept' ? false : true;
+      // Tokenize the input to check length
+      const tokens = await this.embeddingModel.tokenizer(text);
+      const tokenCount = tokens.input_ids.size;
 
-      // Get the embedding for the input, save to object
-      const result = await this.embeddingModel(text, {
-        pooling: 'mean',
-        normalize: normalizeType,
-      });
+      const maxLength = 512;
+      const stride = 256;
 
-      // Save embedding to the object
-      this.embedding = result.data;
+      if (tokenCount < maxLength) {
+        // Short Text found: embed normally
+        const result = await this.embeddingModel(text, {
+          pooling: 'mean',
+          normalize: true,
+        });
+
+        // Save embedding to the object
+        this.embedding = result.data;
+      } else {
+        // Long text found, embed each, and then average
+        const chunks = [];
+
+        for (let i = 0; i < tokenCount; i += stride) {
+          const chunkIds = tokens.input_ids.data.slice(i, i + maxLength);
+
+          if (chunkIds.length === 0) break;
+
+          const chunkText = this.embeddingModel.tokenizer.decode(chunkIds, {
+            skip_special_tokens: true,
+          });
+
+          const result = await this.embeddingModel(chunkText, {
+            pooling: 'mean',
+            normalize: true,
+          });
+
+          chunks.push(result.data);
+
+          if (i + maxLength >= tokenCount) break;
+        }
+
+        // Average all chunk embeddings
+        const dim = chunks[0].length;
+        const avg = new Float32Array(dim);
+
+        for (let i = 0; i < chunks.length; i++) {
+          for (let j = 0; j < dim; j++) {
+            avg[j] += chunks[i][j];
+          }
+        }
+
+        for (let j = 0; j < dim; j++) {
+          avg[j] /= chunks.length;
+        }
+
+        // Save embedding to the object
+        this.embedding = avg;
+      }
 
       // Check if result.data exists and is a numeric array
       if (!(this.embedding instanceof Float32Array)) {
@@ -141,7 +187,7 @@ export class DriftModel {
       );
     }
   }
-
+  
   // * Function to Save Data to file path
   async saveToBin() {
     // Skip if training — this method is only for rolling baseline
@@ -368,6 +414,13 @@ export class DriftModel {
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
     try {
+      const embNorm = Math.sqrt(
+        this.embedding.reduce((sum, v) => sum + v * v, 0)
+      );
+      const vecNorm = Math.sqrt(
+        this.baselineArray.reduce((sum, v) => sum + v * v, 0)
+      );
+
       // Validate the embedding and baselines both exist
       if (
         !(this.embedding instanceof Float32Array) ||
@@ -383,34 +436,24 @@ export class DriftModel {
         );
       }
 
+      // ? Vectors are being normalized in both Python and in the makeEmbedding method call,
+      // So this can be skipped. If normalize is set to false, this needs to be enabled.
+      // Normalize both vectors to unit length
+      // const normalize = (vec) => {
+      //   const mag = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+      //   return vec.map((v) => v / mag);
+      // };
+
+      // const a = normalize(this.embedding);
+      // const b = normalize(this.baselineArray);
+
       // Calculate the dot product of the A and B arrays
       let dotProduct = 0;
       for (let i = 0; i < this.dimensions; i++) {
         dotProduct += this.embedding[i] * this.baselineArray[i];
       }
 
-      // Calculate the magnitude of A
-      const magnitudeA = Math.sqrt(
-        this.embedding.reduce((sum, a) => sum + a * a, 0)
-      );
-
-      // Calculate the magnitude of B
-      const magnitudeB = Math.sqrt(
-        this.baselineArray.reduce((sum, b) => sum + b * b, 0)
-      );
-
-      // Calculate the denominator
-      const denominator = magnitudeA * magnitudeB;
-
-      // Validate that the denominator is not 0
-      if (denominator === 0) {
-        throw new Error(
-          'Zero magnitude detected in cosine similarity calculation.'
-        );
-      }
-
-      // Return the cosine similarity between A and B, clamping the results to prevent rounding errors
-      return Math.min(1, dotProduct / denominator);
+      return dotProduct; // Math.min(1, Math.max(-1, dotProduct));
     } catch (error) {
       throw new Error(
         `Error in getCosineSimilarity for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`

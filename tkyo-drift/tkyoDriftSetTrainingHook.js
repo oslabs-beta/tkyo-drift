@@ -8,16 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 // Directory containing the file (tkyo-drift)
 const __dirname = path.dirname(__filename);
 
-export default async function tkyoDriftSetTraining(
-  dataSetPath,
-  inputName = 'input',
-  outputName = 'output'
-) {
-  
-const tkyoDriftSetTraining = async (dataSetPath, ioType, ioTypeName) => {
+export default async function tkyoDriftSetTraining (dataSetPath, ioType, ioTypeName) {
   try {
     return new Promise((resolve, reject) => {
-      // Creates a link between the data file and the inital function file
+      // Creates a link between the data file and the initial function file
       const resolvedDataSetPath = path.resolve(process.cwd(), dataSetPath);
 
       // Check if the dataset folder exists
@@ -28,7 +22,7 @@ const tkyoDriftSetTraining = async (dataSetPath, ioType, ioTypeName) => {
         );
       }
       // Ensures we are running tkyoDriftSetTraining.py correctly
-      const scriptPath = path.join(__dirname, 'tkyoDriftSetTraining.py');
+      const scriptPath = path.join(__dirname, './util/tkyoDriftSetTraining.py');
       const pyProg = spawn('python3', [
         '-u',
         scriptPath,
@@ -84,7 +78,18 @@ const tkyoDriftSetTraining = async (dataSetPath, ioType, ioTypeName) => {
 
 const dataSetPath = './data';
 // First call: embed the "problem" column as "problem"
-await tkyoDriftSetTraining(dataSetPath, 'problem', 'problem');
+// await tkyoDriftSetTraining(dataSetPath, 'problem', 'problem');
 
-// Second call: embed the "solution" column as "solution"
-await tkyoDriftSetTraining(dataSetPath, 'solution', 'solution');
+// // Second call: embed the "solution" column as "solution"
+// await tkyoDriftSetTraining(dataSetPath, 'solution', 'solution');
+
+await tkyoDriftSetTraining('./data', 'domain', 'domain');
+await tkyoDriftSetTraining('./data', 'domain_description', 'domain_description');
+await tkyoDriftSetTraining('./data', 'sql_complexity', 'sql_complexity');
+await tkyoDriftSetTraining('./data', 'sql_complexity_description', 'sql_complexity_description');
+await tkyoDriftSetTraining('./data', 'sql_task_type', 'sql_task_type');
+await tkyoDriftSetTraining('./data', 'sql_task_type_description', 'sql_task_type_description');
+await tkyoDriftSetTraining('./data', 'sql_context', 'sql_context');
+await tkyoDriftSetTraining('./data', 'sql_explanation', 'sql_explanation');
+await tkyoDriftSetTraining('./data', 'sql', 'sql');
+await tkyoDriftSetTraining('./data', 'sql_prompt', 'sql_prompt');

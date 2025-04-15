@@ -68,7 +68,6 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             "centroids": data.tolist(),
             "distances": None,
         }
-   
 
     # Set number of neighbors (k) based on dataset type
     if "kmeans" in file_path:
@@ -83,7 +82,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     if (len(data) < 200):
         ef_construction = max(1, len(data) - 1)
     else:
-        ef_construction = 200
+        ef_construction = 300
         
     # Set M to len(data)-1 when len(data) is less than 16
     if (len(data) < 16):

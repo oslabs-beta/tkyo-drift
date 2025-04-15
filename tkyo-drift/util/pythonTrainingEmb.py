@@ -3,7 +3,7 @@ import sys
 sys.dont_write_bytecode = True
 
 # Import helper function to create kmeans of data
-from util import pythonKMeans
+import pythonKMeans
 
 # This is good for vectors/matrices
 import numpy as np
@@ -240,6 +240,12 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         # Create header bytes (8 bytes total)
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
 
+        # Normalize the embeddings before saving
+        for i in range(len(embeddings)):
+            norm = np.linalg.norm(embeddings[i])
+            if norm > 0:
+                embeddings[i] = embeddings[i] / norm
+
         # Write to file (header first, then data)
         with open(f"data/vectors/{model_type}.{io_type}.training.bin", "wb") as f:
 
@@ -260,6 +266,12 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
         # Create header bytes (8 bytes total)
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
+
+        # Normalize the embeddings before saving
+        for i in range(len(kMeansEmbedding)):
+            norm = np.linalg.norm(kMeansEmbedding[i])
+            if norm > 0:
+                kMeansEmbedding[i] = kMeansEmbedding[i] / norm
 
         # Write to file (header first, then data)
         print(f"Writing KMeans centroids to disk.")
