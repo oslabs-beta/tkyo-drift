@@ -49,9 +49,9 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             # Keep only the most recent 1,000 entries when we are reading from rolling.
                 reshaped_data = reshaped_data[-1000:-1]
 
-            # If we're in training, we'll only read the most recent 10,000. This will not cause problems with existing training data sets greater than that amount because anything 10,000 and above will receive k-means clustering. In this case we'll be reading from the rolling file, which can get infinitely large, theoretically.
+            # If we're in training, we'll only read the most recent 100,000. This will not cause problems with existing training data sets greater than that amount because anything 100,000 and above will receive k-means clustering. In this case we'll be reading from the rolling file, which can get infinitely large, theoretically.
             elif baseline_type == 'training':
-                reshaped_data = reshaped_data[:10000]
+                reshaped_data = reshaped_data[:100000]
             
             # Set num vectors equal to the actual number we pulled from the reshaped data
             num_vectors = len(reshaped_data)
@@ -59,7 +59,6 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             # Returns the vectors from the binary file
             return reshaped_data, num_vectors, dims
 
-    # TODO: These paths are relative from their execution directory, so this may not work in production
     #load the embeddings and get data, number of vectors, and dimensions from the file.
     data, num_vectors, dims = load_embeddings(file_path)
     # if we have fewer than 10 vectors, we immediately return all of the data as is.
@@ -68,7 +67,6 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             "centroids": data.tolist(),
             "distances": None,
         }
-   
 
     # Set number of neighbors (k) based on dataset type
     if "kmeans" in file_path:
@@ -78,7 +76,6 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     else:
         k = min(20, max(10, int(math.log2(num_vectors)) + 5))
 
-    # TODO: Maybe there is a better way to scale these values other than linearly
     # Set ef_construction to len(data)-1 when len(data) is less than 200
     if (len(data) < 200):
         ef_construction = max(1, len(data) - 1)
@@ -93,7 +90,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     # Initialize HNSW index
 
     # 'l2' = Euclidean distance
-    index = hnswlib.Index(space="l2", dim=dims)
+    index = hnswlib.Index(space="cosine", dim=dims)
 
     # Build the index
     # ef_construction : Controls build speed/accuracy trade-off
@@ -102,6 +99,9 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
 
     # Add data to the index
     index.add_items(data)
+
+    # Set ef for the query. 50 is a pretty standard number, but a higher ef will yield more accuracy at the cost of time. If you can handle more time, you can increase this value. If you want it to run faster, you can lower it. We recommend staying above 50.
+    index.set_ef(75)
 
     # Destructuring labels and distances from the nearest neighbors query
     labels, distances = index.knn_query(query, k=k)

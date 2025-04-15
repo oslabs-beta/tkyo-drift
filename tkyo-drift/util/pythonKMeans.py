@@ -15,15 +15,18 @@ def kMeansClustering(embeddings):
 
     # Sets num_vectors to the amount of vectors
     num_vectors = len(embeddings)
+    
+
     # Sets dims to the length of the first vector in the array
     dims = len(embeddings[0])
 
     # Determines the amount of clusters
-    num_of_clusters = int(np.sqrt(num_vectors / 2))
+    num_of_clusters = int(np.sqrt(num_vectors / 2)*10)
 
     # Initialize the KMeans clustering algorithm with specific parameters:
     # random_state: Seed for random number generator to ensure reproducibility
     # (Using the same random_state will produce identical results across runs)
+    print(f"Building KMeans for {num_vectors} vectors with {num_of_clusters} clusters.")
     kmeans = KMeans(num_of_clusters, random_state=42069)
 
     # Train the K-means model on our data
@@ -39,6 +42,6 @@ def kMeansClustering(embeddings):
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()
-    print(f"Elapsed: {endTotal - startTotal:.6f} seconds")
+    print(f"KMeans cluster analysis completed in: {endTotal - startTotal:.2f} seconds")
 
     return centroids

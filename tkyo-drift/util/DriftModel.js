@@ -5,14 +5,14 @@ import fsPromises from 'fs/promises';
 import { spawn } from 'child_process';
 import { pipeline } from '@xenova/transformers';
 import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
+import { fileURLToPath } from 'url';
 
 export class DriftModel {
-  constructor(modelType, modelName, ioType, baselineType, depth = 0) {
+  constructor(modelType, modelName, ioType, baselineType) {
     this.baselineType = baselineType;
     this.modelType = modelType;
     this.modelName = modelName;
     this.ioType = ioType;
-    this.depth = depth;
     this.distance = null;
     this.embedding = null;
     this.byteOffset = null;
@@ -48,18 +48,14 @@ export class DriftModel {
       );
 
       // Use rolling file path if there is no training data.
+      // ? ctrl+f the README for hybrid mode if you want to know why
       this.embeddingFilePath = fs.existsSync(vectorKmeansPath)
         ? vectorKmeansPath
         : fs.existsSync(vectorPath)
         ? vectorPath
         : fallbackPath;
 
-      // ? ctrl+f the README for hybrid mode if you want to know why
-      // this.embeddingFilePath = fs.existsSync(vectorPath)
-      //   ? vectorPath
-      //   : fallbackPath;
-
-      // 2. Scalar metric path (.scalar.jsonl)
+      // Scalar metric path (.scalar.jsonl)
       this.scalarFilePath = path.join(
         OUTPUT_DIR,
         'scalars',
@@ -100,7 +96,7 @@ export class DriftModel {
   // * Function to make an embedding from an input/output pair
   async makeEmbedding(text) {
     try {
-      // Validate I/O text is not null/undefined/empty
+      // Validate that the text is not null/undefined/empty
       if (typeof text !== 'string' || text.trim() === '') {
         throw new Error(
           'Expected a non-empty string but received invalid input.'
@@ -110,25 +106,70 @@ export class DriftModel {
       // Invoke the load model if it hasn't been done yet
       await this.loadModel();
 
-      let normalizeType = this.modelType === 'concept' ? false : true;
+      // Tokenize the text to check length
+      const tokens = await this.embeddingModel.tokenizer(text);
+      const tokenCount = tokens.input_ids.size;
 
-      // Get the embedding for the input, save to object
-      const result = await this.embeddingModel(text, {
-        pooling: 'mean',
-        normalize: normalizeType,
-      });
+      const maxLength = 512;
+      const stride = 256;
 
-      // Save embedding to the object
-      this.embedding = result.data;
+      if (tokenCount < maxLength) {
+        // Short Text found: embed normally
+        const result = await this.embeddingModel(text, {
+          pooling: 'mean',
+          normalize: false,
+        });
+
+        // Save embedding to the object
+        this.embedding = result.data;
+      } else {
+        // Long text found, embed each, and then average
+        const chunks = [];
+
+        for (let i = 0; i < tokenCount; i += stride) {
+          const chunkIds = tokens.input_ids.data.slice(i, i + maxLength);
+
+          if (chunkIds.length === 0) break;
+
+          const chunkText = this.embeddingModel.tokenizer.decode(chunkIds, {
+            skip_special_tokens: true,
+          });
+
+          const result = await this.embeddingModel(chunkText, {
+            pooling: 'mean',
+            normalize: true,
+          });
+
+          chunks.push(result.data);
+
+          if (i + maxLength >= tokenCount) break;
+        }
+
+        // Average all chunk embeddings
+        const dim = chunks[0].length;
+        const avg = new Float32Array(dim);
+
+        for (let i = 0; i < chunks.length; i++) {
+          for (let j = 0; j < dim; j++) {
+            avg[j] += chunks[i][j];
+          }
+        }
+
+        for (let j = 0; j < dim; j++) {
+          avg[j] /= chunks.length;
+        }
+
+        // Save embedding to the object
+        this.embedding = avg;
+      }
 
       // Check if result.data exists and is a numeric array
-    if (!(this.embedding instanceof Float32Array)) {
+      if (!(this.embedding instanceof Float32Array)) {
         throw new Error('Embedding result is not a valid Float32Array.');
-      } 
+      }
       // Check if the embedding is empty
       if (this.embedding.length === 0) {
-        throw new Error(
-          'Embedding array is empty.');
+        throw new Error('Embedding array is empty.');
       }
 
       // Save dimensions to object (the actual vector dim is at position 1)
@@ -136,7 +177,6 @@ export class DriftModel {
 
       // save byte offset to object
       this.byteOffset = this.embedding.byteOffset;
-
     } catch (error) {
       throw new Error(
         `Error in makeEmbedding for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
@@ -235,15 +275,36 @@ export class DriftModel {
 
   // * Function to read the contents of the Bins, Build an HNSW
   async readFromBin() {
+    // Full path to DriftModel.js
+    const __filename = fileURLToPath(import.meta.url);
+    // Directory containing the file (util)
+    const __dirname = path.dirname(__filename);
+
+    // Creates a link between the data file and the inital function file
+    const resolvedDataSetPath = path.resolve(
+      process.cwd(),
+      this.embeddingFilePath
+    );
+
+    // Check if the dataset folder exists
+    if (!fs.existsSync(resolvedDataSetPath)) {
+      // If not, throw an error
+      throw new Error(
+        `The dataSetPath "${resolvedDataSetPath}" does not exist.`
+      );
+    }
+    // Ensures we are running pythonHNSW.py correctly
+    const scriptPath = path.join(__dirname, 'pythonHNSW.py');
+
     try {
       return new Promise((resolve, reject) => {
         const pyProg = spawn('python3', [
-          './util/pythonHNSW.py',
+          scriptPath,
           this.ioType,
           this.modelType,
           JSON.stringify(Array.from(this.embedding)),
           this.baselineType,
-          this.embeddingFilePath
+          this.embeddingFilePath,
         ]);
 
         let result = '';
@@ -286,7 +347,6 @@ export class DriftModel {
             Array.isArray(distances) && distances.length > 0
               ? distances.reduce((sum, val) => sum + val, 0) / distances.length
               : null;
-
           resolve({ centroids, distances });
         });
       });
@@ -365,34 +425,22 @@ export class DriftModel {
         );
       }
 
+      // Normalize both vectors to unit length
+      const normalize = (vec) => {
+        const mag = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+        return vec.map((v) => v / mag);
+      };
+
+      const a = normalize(this.embedding);
+      const b = normalize(this.baselineArray);
+
       // Calculate the dot product of the A and B arrays
       let dotProduct = 0;
       for (let i = 0; i < this.dimensions; i++) {
-        dotProduct += this.embedding[i] * this.baselineArray[i];
+        dotProduct += a[i] * b[i];
       }
 
-      // Calculate the magnitude of A
-      const magnitudeA = Math.sqrt(
-        this.embedding.reduce((sum, a) => sum + a * a, 0)
-      );
-
-      // Calculate the magnitude of B
-      const magnitudeB = Math.sqrt(
-        this.baselineArray.reduce((sum, b) => sum + b * b, 0)
-      );
-
-      // Calculate the denominator
-      const denominator = magnitudeA * magnitudeB;
-
-      // Validate that the denominator is not 0
-      if (denominator === 0) {
-        throw new Error(
-          'Zero magnitude detected in cosine similarity calculation.'
-        );
-      }
-
-      // Return the cosine similarity between A and B, clamping the results to prevent rounding errors
-      return Math.min(1, dotProduct / denominator);
+      return dotProduct; // Math.min(1, Math.max(-1, dotProduct));
     } catch (error) {
       throw new Error(
         `Error in getCosineSimilarity for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`
@@ -442,7 +490,6 @@ export class DriftModel {
     try {
       // Skip if training — this method is only for rolling baseline
       if (this.baselineType === 'training') return;
-
       // Calculate vector L2 norm
       const norm = Math.sqrt(
         this.embedding.reduce((sum, val) => sum + val * val, 0)

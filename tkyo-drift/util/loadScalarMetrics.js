@@ -79,17 +79,18 @@ export async function loadScalarMetrics(
   }
 
   for (const metric in metrics) {
-    const values = metrics[metric]
+    const values = metrics[metric];
 
-    if (hybridMode && baselineType === 'training'){
+    if (hybridMode && baselineType === 'training') {
       // Use the first 10k lines from rolling files as a proxy for the the training data
-      metrics[metric] = values.slice(0,10000)
+      metrics[metric] = values.slice(0, 10000);
     }
-      // use the most recent 1k lines from rolling
-    if (baselineType === 'rolling'){
-      metrics[metric] = values.slice(-1000)
+    // use the most recent 1k lines from rolling
+    if (baselineType === 'rolling') {
+      metrics[metric] = values.slice(-1000);
     }
   }
 
-  return metrics; // returns a dictionary of arrays keyed by metric name
+  // returns a dictionary of arrays keyed by metric name
+  return metrics;
 }
