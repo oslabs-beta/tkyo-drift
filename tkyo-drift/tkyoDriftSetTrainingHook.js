@@ -50,7 +50,9 @@ const tkyoDriftSetTraining = async (dataSetPath, ioType, ioTypeName) => {
 // TODO Remove hardcoded path, input name, & output name
 const dataSetPath = './data';
 // First call: embed the "problem" column as "problem"
-await tkyoDriftSetTraining(dataSetPath, 'problem', 'problem');
+// await tkyoDriftSetTraining(dataSetPath, 'problem', 'problem');
 
-// Second call: embed the "solution" column as "solution"
-await tkyoDriftSetTraining(dataSetPath, 'solution', 'solution');
+// // Second call: embed the "solution" column as "solution"
+// await tkyoDriftSetTraining(dataSetPath, 'solution', 'solution');
+
+await tkyoDriftSetTraining(dataSetPath, 'test', 'test');

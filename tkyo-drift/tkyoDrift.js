@@ -235,5 +235,6 @@ The rate of a heterogeneous catalytic reaction is governed by **catalyst propert
 - **Promoters/Inhibitors:** Promoters like Al₂O₃ in Haber-Bosch improve catalyst efficiency; inhibitors block sites (e.g., sulfur poisoning in Ni catalysts).
 
 Optimizing these factors ensures efficient catalysis, balancing activity and stability for industrial applications like ammonia synthesis or hydrocarbon production.`;
-await tkyoDrift(input, 'problem');
+// await tkyoDrift(input, 'problem');
 // await tkyoDrift(output, 'solution');
+await tkyoDrift("The quick brown fox jumps over the lazy dog.", "test")
