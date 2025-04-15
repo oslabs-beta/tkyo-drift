@@ -48,18 +48,14 @@ export class DriftModel {
       );
 
       // Use rolling file path if there is no training data.
+      // ? ctrl+f the README for hybrid mode if you want to know why
       this.embeddingFilePath = fs.existsSync(vectorKmeansPath)
         ? vectorKmeansPath
         : fs.existsSync(vectorPath)
         ? vectorPath
         : fallbackPath;
 
-      // ? ctrl+f the README for hybrid mode if you want to know why
-      // this.embeddingFilePath = fs.existsSync(vectorPath)
-      //   ? vectorPath
-      //   : fallbackPath;
-
-      // 2. Scalar metric path (.scalar.jsonl)
+      // Scalar metric path (.scalar.jsonl)
       this.scalarFilePath = path.join(
         OUTPUT_DIR,
         'scalars',
@@ -187,7 +183,7 @@ export class DriftModel {
       );
     }
   }
-  
+
   // * Function to Save Data to file path
   async saveToBin() {
     // Skip if training — this method is only for rolling baseline

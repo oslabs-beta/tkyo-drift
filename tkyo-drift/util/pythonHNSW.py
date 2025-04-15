@@ -59,7 +59,6 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
             # Returns the vectors from the binary file
             return reshaped_data, num_vectors, dims
 
-    # TODO: These paths are relative from their execution directory, so this may not work in production
     #load the embeddings and get data, number of vectors, and dimensions from the file.
     data, num_vectors, dims = load_embeddings(file_path)
     # if we have fewer than 10 vectors, we immediately return all of the data as is.
@@ -77,7 +76,6 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     else:
         k = min(20, max(10, int(math.log2(num_vectors)) + 5))
 
-    # TODO: Maybe there is a better way to scale these values other than linearly
     # Set ef_construction to len(data)-1 when len(data) is less than 200
     if (len(data) < 200):
         ef_construction = max(1, len(data) - 1)
@@ -103,7 +101,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     index.add_items(data)
 
     # Set ef for the query
-    index.set_ef(ef_construction)
+    index.set_ef(200)
 
     # Destructuring labels and distances from the nearest neighbors query
     labels, distances = index.knn_query(query, k=k)

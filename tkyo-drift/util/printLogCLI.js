@@ -7,7 +7,7 @@ import { MODELS, OUTPUT_DIR } from '../tkyoDrift.js';
 // Constants & CLI Args
 const logPath = path.join(OUTPUT_DIR, 'logs', 'COS_log.csv');
 const args = process.argv.slice(2);
-const days = isNaN(parseInt(args[0])) ? 1 : parseInt(args[0]);
+const days = isNaN(parseInt(args[0])) ? 30 : parseInt(args[0]);
 const driftThreshold = 0.9;
 const startTime = Date.now() - days * 86400000; // milliseconds in a day
 
@@ -98,7 +98,7 @@ for (const ioType of ioTypes) {
       if (!sum || !count) continue;
 
       // Clamp avg to 0–1 and prevent NaN/Infinity
-      const avg = (sum / count) // Math.min(1, Math.max(0, sum / count));
+      const avg = sum / count; // Math.min(1, Math.max(0, sum / count));
 
       // Count violations under the similarity threshold
       let groupViolations = 0;
