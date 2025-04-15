@@ -2,6 +2,7 @@ from datasets import Dataset, concatenate_datasets
 import os
 import json
 import numpy as np
+import time
 from datetime import datetime
 from util.pythonTrainingEmb import resolve_io_column
 
@@ -21,9 +22,17 @@ def write_shared_scalar_metrics(data_path, io_type, io_type_name):
 
     # Use our helper to extract the proper column of input/output text
     batch_texts = resolve_io_column(dataset, io_type_name)
+    
+    # start timer:
+    start_time = time.perf_counter()
 
     # Loop through every text item and compute shared scalar values
-    for text in batch_texts:
+    for i, text in enumerate(batch_texts):
+
+        if not isinstance(text, str) or not text.strip():
+            print(f"[WARN] Skipping index {i}: Text is empty or not a string.")   
+            continue     
+
         timestamp = datetime.now().isoformat()  # ISO timestamp for tracking
 
         # --- Compute Shared Metrics ---
@@ -75,3 +84,27 @@ def write_shared_scalar_metrics(data_path, io_type, io_type_name):
                     "timestamp": timestamp,
                     "metrics": {metric: value}
                 }) + "\n")
+
+        # Print progress every 100 batches
+        if i % 100 == 0:
+            elapsed = time.perf_counter() - start_time
+            processed = min(i + 100, len(batch_texts))
+            remaining = len(batch_texts) - processed
+            est_total = (elapsed / processed) * len(batch_texts) if processed else 0
+            est_remaining = est_total - elapsed
+            mins, secs = divmod(est_remaining, 60)
+            
+        if est_remaining < 60:
+            eta_display = f"{int(secs)}s"
+        else:
+            eta_display = f"{int(mins):02d}:{int(secs):02d}"
+
+        print(
+            f"Processed {processed}/{len(batch_texts)} | ETA: {eta_display} ",
+            end="\r",
+            flush=True
+        )
+
+
+
+    print()

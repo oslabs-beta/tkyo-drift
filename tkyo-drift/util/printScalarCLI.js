@@ -10,6 +10,7 @@ const SCALAR_DIR = path.join('data', 'scalars');
 
 // Define warning boolean to console log a warning if we are in hybrid mode
 let warn = false;
+let noRollingWarning = false;
 
 // Load all filenames in the scalar directory
 const files = fs.readdirSync(SCALAR_DIR);
@@ -17,7 +18,7 @@ const files = fs.readdirSync(SCALAR_DIR);
 // Regex pattern to extract metadata from filenames:
 // Format: ioType.metric.[modelType?].baseline.scalar.jsonl
 const scalarFileRegex =
-  /^([a-z]+)\.([a-zA-Z]+)(?:\.([a-zA-Z]+))?\.(training|rolling)\.scalar\.jsonl$/;
+  /^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)(?:\.([a-zA-Z]+))?\.(training|rolling)\.scalar\.jsonl$/;
 
 // Container to group scalar file pairs (training + rolling) by metric/io/model
 const matchedPairs = new Map();
@@ -82,8 +83,11 @@ for (const [groupKey, metricsObj] of matchedPairs.entries()) {
     let training;
     let rolling;
 
+    if (!pair.rolling) {
+      noRollingWarning = true;
+    }
     // If we do not have a pair, we are using HYBRID MODE, and this will use both the rolling files for the training/rolling data
-    if (!pair.training || !pair.rolling) {
+    if (!pair.training) {
       // Set the warning to true
       warn = true;
 
@@ -177,49 +181,6 @@ function formatPSI(val) {
   return chalk.red(formatted); // Major drift
 }
 
-// -------------<< SAMPLE COUNT FOOTER >>-------------
-
-// Initialize per-direction counters for each baseline
-let trainingCount = { input: 0, output: 0 };
-let rollingCount = { input: 0, output: 0 };
-
-// Loop through both I/O types (input/output)
-for (const ioType of ['input', 'output']) {
-  // Define a quick check: shared files will always follow this pattern
-  const isShared = (f) =>
-    f.startsWith(`${ioType}.`) &&
-    f.endsWith('.scalar.jsonl') &&
-    f.split('.').length === 5; // shared = io.metric.baseline.scalar.jsonl
-
-  // Find *any one* shared scalar file for each baseline (we only need one to count lines)
-  const trainingFile = files.find(
-    (f) => isShared(f) && f.includes('.training.')
-  );
-  const rollingFile = files.find((f) => isShared(f) && f.includes('.rolling.'));
-
-  // Read the number of lines for the training baseline
-  if (trainingFile) {
-    const lines = fs
-      .readFileSync(path.join(SCALAR_DIR, trainingFile), 'utf-8')
-      .split('\n')
-      .filter(Boolean); // Filter out empty final line
-    trainingCount[ioType] = lines.length;
-  }
-
-  // Read the number of lines for the rolling baseline
-  if (rollingFile) {
-    const lines = fs
-      .readFileSync(path.join(SCALAR_DIR, rollingFile), 'utf-8')
-      .split('\n')
-      .filter(Boolean);
-    rollingCount[ioType] = lines.length;
-  }
-}
-
-// Sum both directions (input + output) for final total count
-const totalTrain = trainingCount.input + trainingCount.output;
-const totalRoll = rollingCount.input + rollingCount.output;
-
 if (warn) {
   console.log(
     chalk.gray(
@@ -227,9 +188,7 @@ if (warn) {
     )
   );
 }
-// Display results as a final CLI footer line
-console.log(
-  chalk.gray(
-    `\nSamples — Training: ${totalTrain.toLocaleString()}   |   Rolling: ${totalRoll.toLocaleString()}\n`
-  )
-);
+
+if (noRollingWarning) {
+  console.log(chalk.red(`You seem to be missing rolling data.`));
+}
