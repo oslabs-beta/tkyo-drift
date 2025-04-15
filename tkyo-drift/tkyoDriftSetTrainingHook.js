@@ -63,6 +63,5 @@ await tkyoDriftSetTraining('./data', 'sql_task_type', 'sql_task_type');
 await tkyoDriftSetTraining('./data', 'sql_task_type_description', 'sql_task_type_description');
 await tkyoDriftSetTraining('./data', 'sql_context', 'sql_context');
 await tkyoDriftSetTraining('./data', 'sql_explanation', 'sql_explanation');
-
 await tkyoDriftSetTraining('./data', 'sql', 'sql');
 await tkyoDriftSetTraining('./data', 'sql_prompt', 'sql_prompt');

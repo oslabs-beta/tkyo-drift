@@ -97,7 +97,7 @@ for (const ioType of ioTypes) {
       if (!sum || !count) continue;
 
       // Clamp avg to 0–1 and prevent NaN/Infinity
-      const avg = Math.min(1, Math.max(0, sum / count));
+      const avg = (sum / count) // Math.min(1, Math.max(0, sum / count));
 
       // Count violations under the similarity threshold
       let groupViolations = 0;

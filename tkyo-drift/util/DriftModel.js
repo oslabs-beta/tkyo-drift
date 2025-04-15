@@ -120,7 +120,7 @@ export class DriftModel {
         // Short Text found: embed normally
         const result = await this.embeddingModel(text, {
           pooling: 'mean',
-          normalize: false,
+          normalize: true,
         });
 
         // Save embedding to the object
@@ -140,7 +140,7 @@ export class DriftModel {
 
           const result = await this.embeddingModel(chunkText, {
             pooling: 'mean',
-            normalize: false,
+            normalize: true,
           });
 
           chunks.push(result.data);
@@ -392,11 +392,14 @@ export class DriftModel {
 
   // * Function to get cosine similarity between baseline and embedding
   getCosineSimilarity() {
-    console.log(this.modelType, ' ', this.baselineType);
-    console.log(this.embedding[10]);
-    console.log(this.vectorArray[0][10]);
-
     try {
+      const embNorm = Math.sqrt(
+        this.embedding.reduce((sum, v) => sum + v * v, 0)
+      );
+      const vecNorm = Math.sqrt(
+        this.baselineArray.reduce((sum, v) => sum + v * v, 0)
+      );
+
       // Validate the embedding and baselines both exist
       if (
         !(this.embedding instanceof Float32Array) ||
@@ -412,22 +415,24 @@ export class DriftModel {
         );
       }
 
+      // ? Vectors are being normalized in both Python and in the makeEmbedding method call,
+      // So this can be skipped. If normalize is set to false, this needs to be enabled.
       // Normalize both vectors to unit length
-      const normalize = (vec) => {
-        const mag = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
-        return vec.map((v) => v / mag);
-      };
+      // const normalize = (vec) => {
+      //   const mag = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
+      //   return vec.map((v) => v / mag);
+      // };
 
-      const a = normalize(this.embedding);
-      const b = normalize(this.baselineArray);
+      // const a = normalize(this.embedding);
+      // const b = normalize(this.baselineArray);
 
       // Calculate the dot product of the A and B arrays
       let dotProduct = 0;
       for (let i = 0; i < this.dimensions; i++) {
-        dotProduct += a[i] * b[i];
+        dotProduct += this.embedding[i] * this.baselineArray[i];
       }
-      
-      return Math.min(1, Math.max(-1, dotProduct));
+
+      return dotProduct; // Math.min(1, Math.max(-1, dotProduct));
     } catch (error) {
       throw new Error(
         `Error in getCosineSimilarity for the ${this.modelType} ${this.ioType} ${this.baselineType} model: ${error.message}`

@@ -106,7 +106,7 @@ def HNSW(io_type, model_type, query, baseline_type, file_path):
     index.set_ef(ef_construction)
 
     # Destructuring labels and distances from the nearest neighbors query
-    labels, distances = index.knn_query(query, k=1)
+    labels, distances = index.knn_query(query, k=k)
 
     # Ends timing for the entire function
     endTotal = time.perf_counter()
