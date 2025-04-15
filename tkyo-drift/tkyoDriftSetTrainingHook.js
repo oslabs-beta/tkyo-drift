@@ -70,9 +70,3 @@ export default async function tkyoDriftSetTraining(
     );
   }
 }
-
-const dataSetPath = './data';
-const inputName = 'problem';
-const outputName = 'solution';
-tkyoDriftSetTraining(dataSetPath,inputName,inputName)
-tkyoDriftSetTraining(dataSetPath,outputName,outputName)

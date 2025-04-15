@@ -214,22 +214,3 @@ export default async function tkyoDrift(text, ioType) {
   // Stopwatch END 🏁 (Comment this out in production)
   // console.timeEnd('Drift Analyzer Full Run');
 }
-const input =
-  'How do the properties of the catalyst and the reaction conditions affect the rate of a heterogeneous catalytic reaction? Provide a detailed explanation with examples.';
-const output = `The rate of a heterogeneous catalytic reaction is governed by **catalyst properties** and **reaction conditions**:
-
-1. **Catalyst Properties:**
-- **Surface Area:** Higher surface area (e.g., finely divided iron in the Haber-Bosch process) increases active sites, boosting reaction rate.
-- **Active Site Density:** More sites per unit area enhance adsorption (e.g., Co catalysts in Fischer-Tropsch synthesis).
-- **Structure/Morphology:** Porous or nanostructured catalysts (e.g., zeolites) improve reactant access and selectivity.
-- **Electronic Properties:** Oxidation state and electron density influence adsorption strength (e.g., Au nanoparticles for alcohol oxidation).
-
-2. **Reaction Conditions:**
-- **Temperature:** Increases rate by raising kinetic energy but may deactivate catalysts via sintering (e.g., metal catalysts at high temps).
-- **Pressure:** Enhances reactant adsorption (e.g., high pressure in Haber-Bosch for N₂/H₂ adsorption on Fe).
-- **Reactant Concentration:** Higher concentration increases collision frequency with active sites.
-- **Promoters/Inhibitors:** Promoters like Al₂O₃ in Haber-Bosch improve catalyst efficiency; inhibitors block sites (e.g., sulfur poisoning in Ni catalysts).
-
-Optimizing these factors ensures efficient catalysis, balancing activity and stability for industrial applications like ammonia synthesis or hydrocarbon production.`;
-await tkyoDrift (input, 'problem')
-await tkyoDrift (output, 'solution')
