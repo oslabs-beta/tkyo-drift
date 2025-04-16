@@ -46,6 +46,8 @@ import tkyoDrift from './util/oneOffEmb.js';
 import tkyoDriftSetTrainingHook from './util/tkyoDriftSetTrainingHook.js';
 import printLogCLI from './util/printLogCLI.js';
 import printScalarCLI from './util/printScalarCLI.js';
+import path from 'path';
+import fs from 'fs';
 
 // Get the commands from the CLI (the first 2 are not commands)
 const args = process.argv.slice(2);
@@ -75,6 +77,17 @@ if (process.argv[1].endsWith('tkyo')) {
     case 'train': {
       const [pathToData, columnName, ioType] = rest;
 
+      // If someone calls the train command, we normalize the path.
+      const normalizedPath = path.resolve(
+        process.cwd(),
+        pathToData.replace(/\\/g, '/')
+      );
+
+      // Error handle when the path does not exist.
+      if (!fs.existsSync(normalizedPath)) {
+        throw new Error(`The dataSetPath "${normalizedPath}" does not exist.`);
+      }
+
       if (!pathToData || !columnName || !ioType) {
         console.error(
           'Usage: tkyo train <path to data> <column name> <ioType>'
@@ -82,7 +95,7 @@ if (process.argv[1].endsWith('tkyo')) {
         process.exit(1);
       }
 
-      await tkyoDriftSetTrainingHook(pathToData, columnName, ioType);
+      await tkyoDriftSetTrainingHook(normalizedPath, columnName, ioType);
       console.log("Job's done.");
       break;
     }
