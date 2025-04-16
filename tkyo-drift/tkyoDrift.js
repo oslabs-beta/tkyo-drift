@@ -42,10 +42,11 @@
 @@@@@@@@@@@@@@@@@%+:--::=****=:..::-. ......       ...:::::..........................                                                                                                                           .        
 @%%%####******+++++++++=============------:::::.............                                                   ...............................::::::::::::::::::::::------=====+++++++*******#######%%%%%%@@@@@@@        
 @@@@@@@@@@@@@@@@@@%%%##############%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@*/
-import tkyoDrift from './util/oneOffEmb.js';
 import tkyoDriftSetTrainingHook from './util/tkyoDriftSetTrainingHook.js';
-import printLogCLI from './util/printLogCLI.js';
 import printScalarCLI from './util/printScalarCLI.js';
+import printLogCLI from './util/printLogCLI.js';
+import tkyoDrift from './util/oneOffEmb.js';
+import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
 
@@ -77,6 +78,14 @@ if (process.argv[1].endsWith('tkyo')) {
     case 'train': {
       const [pathToData, columnName, ioType] = rest;
 
+      // Error handle when 
+      if (!pathToData || !columnName || !ioType) {
+        console.error(chalk.blueBright(
+          'Usage: tkyo train <path to data> <column name> <ioType>'
+        ));
+        process.exit(1);
+      }
+
       // If someone calls the train command, we normalize the path.
       const normalizedPath = path.resolve(
         process.cwd(),
@@ -85,31 +94,33 @@ if (process.argv[1].endsWith('tkyo')) {
 
       // Error handle when the path does not exist.
       if (!fs.existsSync(normalizedPath)) {
-        throw new Error(`The dataSetPath "${normalizedPath}" does not exist.`);
-      }
-
-      if (!pathToData || !columnName || !ioType) {
-        console.error(
-          'Usage: tkyo train <path to data> <column name> <ioType>'
-        );
-        process.exit(1);
+        console.error(chalk.red(`The dataSetPath provided does not exist.`));
       }
 
       await tkyoDriftSetTrainingHook(normalizedPath, columnName, ioType);
-      console.log("Job's done.");
+      console.log(chalk.green("Job's done."));
       break;
     }
 
     // ? help commands
     default:
-      console.log(`
-TKYO Drift CLI
+      console.log(chalk.gray(`
+↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓    ↑↑↑     ↗↓↓↓↗     ↓↓↓         ↓↓↓    ↓↓↓↓↓↓↓↓↓↓↓↓↖
+       ↑↑↑          ↑↑↑    ↗↑↑↑       ↑↑↑         ↑↑↑   ↑↑↑↑         ↖↑↑
+      ↑↑↑          ↑↑↑   ↗↑↑↑        ↑↑↑         ↑↑↑   ↑↑↑           ↖↑↑
+     ↑↑↑          ↑↑↑↑↑↑↑↘          ↑↑↑        ↑↑↑↑   ↑↑↑            ↖↑↑
+    ↖↑↑         →↑↑    ↑↑↑↘         ↑↑↑↑↑↑↑↑↑↑↑↑↑    ←↑↑            ↑↑↑↗
+    ↑↑↑         ↑↑↑     ↑↑↑↘             ↑↑↑         ↑↑↑           ↗↑↑↓
+   ↑↑↑         ↑↑↑       ↑↑↑↘           ↑↑↑          ↑↑↑↑        ↗↑↑↑
+  ↑↑↑         ↑↑↑         ↑↑↑↘         ↑↑↑            ↑↑↑↑↑↑↑↑↑↑↑↑↑↗
 
 Usage:
-  tkyo cos <number of days>                         Show COS Drift logs for last N days
-  tkyo scalar                                       Show scalar drift comparison
-  tkyo train <path to data> <column name> <ioType>  Embed dataset and update training baseline
-      `);
+  ${chalk.yellowBright('tkyo')} ${chalk.white('cos')} ${chalk.blueBright('<number of days>')}                         Show COS Drift logs for last N days
+  ${chalk.yellowBright('tkyo')} ${chalk.white('scalar')}                                       Show scalar drift comparison
+  ${chalk.yellowBright('tkyo')} ${chalk.white('train')} ${chalk.blueBright('<path to data> <column name> <ioType>')}  Embed dataset and update training baseline
+
+Readme docs in the node package or at ${chalk.blueBright('https://github.com/oslabs-beta/tkyo-drift')}
+      `));
   }
 }
 
