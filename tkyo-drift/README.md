@@ -104,7 +104,7 @@ pip install -r ./node_modules/tkyo-drift/requirements.txt
 3. Import tkyoDrift into your AI workflow pages:
 
 ```js
-import tkyoDrift from tkyoDrift
+import tkyoDrift from 'tkyoDrift'
 ```
 
 4. Add a function call to `tkyoDrift(text, inputType)` passing in your text and input type name:
