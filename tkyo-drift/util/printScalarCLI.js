@@ -4,10 +4,11 @@ import chalk from 'chalk';
 import Table from 'cli-table3';
 import { compareScalarDistributions } from './compareScalarDistributions.js';
 import { loadScalarMetrics } from './loadScalarMetrics.js';
+import { OUTPUT_DIR } from './oneOffEmb.js';
 
 export default async function printScalarCLI() {
   // Define the path to where scalar .jsonl files are stored
-  const SCALAR_DIR = path.join('data', 'scalars');
+  const SCALAR_DIR = path.join(OUTPUT_DIR, 'scalars');
 
   // Define warning boolean to console log a warning if we are in hybrid mode
   let warn = false;

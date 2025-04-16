@@ -341,6 +341,9 @@ Keep in mind, however, you can change models any time you like, though that will
 
 Invoke the logs with `tkyo cos <number of days>` and `tkyo scalar` for each of their respective datasets. The `tkyo cos` command uses the `printLogCLI.js` script to do the following, while the `tkyo scalar` command invokes the `printScalarCLI.js` below this block. In general, however, you should link your external data visualization tools to the log folder in the data directory.
 
+```
+Note that if you are installing tkyo locally, you need to add `npx` before your tkyo commands. `tkyo` as a standalone command only works if the CLI tool is installed globally (or linked globally). `npx` runs the CLI tool without requiring global installation.
+```
 ### `printLogCLI.js`
 
 Usage: `tkyo cos <number of days>`
@@ -541,6 +544,10 @@ From this smaller set of centroids, we use HNSW to find the closest centroid for
 Notably, this is a tradeoff between accuracy and speed, as KMeans cluster analysis will generate a centroid for each cluster and not provide the actual nearest neighbor. If this is a problem for your workflow, you can disable the KMeans analysis to always find the nearest neighbor from the training set.
 
 This system uses `(num_of_clusters = int(np.sqrt(num_vectors / 2)*10))` to determine the number of clusters to generate, as we do not have the ability to use the elbow method to determine the proper value for K.
+
+```
+Building the Kmeans analysis of your training data can be slow. Like REALLY slow. Unbelievably, unbearably slow. The K value we pick might be too large for your PC, and if it is, you can scale down that *10 to *5, or *1 if needed in the pythonKMeans.py file.
+```
 
 ## Scalar Metrics
 
