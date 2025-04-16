@@ -98,7 +98,7 @@ npm install tkyodrift
 2. Install the Python Dependencies:
 
 ```bash
-pip install -r ./node_modules/TKYODrift/requirements.txt
+pip install -r ./node_modules/tkyo-drift/requirements.txt
 ```
 
 3. Import tkyoDrift into your AI workflow pages:
@@ -339,7 +339,7 @@ Keep in mind, however, you can change models any time you like, though that will
 
 ## CLI Tools
 
-Invoke the logs with `tkyo cos <number of days>` and `tkyo scalar` for each of their respective datasets. The `tkyo cos` command uses the `printLogCLI.js` script to do the following, while the `tkyo scalar` command invokes the `printScalarCLI.js` below this block.
+Invoke the logs with `tkyo cos <number of days>` and `tkyo scalar` for each of their respective datasets. The `tkyo cos` command uses the `printLogCLI.js` script to do the following, while the `tkyo scalar` command invokes the `printScalarCLI.js` below this block. In general, however, you should link your external data visualization tools to the log folder in the data directory.
 
 ### `printLogCLI.js`
 
