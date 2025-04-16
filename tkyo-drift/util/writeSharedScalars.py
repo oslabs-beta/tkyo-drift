@@ -73,7 +73,7 @@ def write_shared_scalar_metrics(data_path, io_type, io_type_name):
         # --- Write each metric to its own scalar file ---
         for metric, value in shared_metrics.items():
             # File format: input.avgWordLength.training.scalar.jsonl
-            file_path = f"data/scalars/{io_type}.{metric}.training.scalar.jsonl"
+            file_path = f"tkyodata/scalars/{io_type}.{metric}.training.scalar.jsonl"
 
             # Ensure the directory exists
             os.makedirs(os.path.dirname(file_path), exist_ok=True)

@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="https://github.com/oslabs-beta/tkyo-drift/raw/master/tkyo-banner.png" width="100%" alt="TKYO Drift Banner">
+  <img src="./assets/tkyo-banner.png" width="100%" alt="TKYO Drift Banner">
 </p>
 
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift)
 
-![npm](https://img.shields.io/npm/v/tkyoDrift?style=flat-square)
+![npm](https://img.shields.io/npm/v/tkyodrift?style=flat-square)
 ![license](https://img.shields.io/github/license/oslabs-beta/tkyo-drift?style=flat-square)
 ![issues](https://img.shields.io/github/issues/oslabs-beta/tkyo-drift?style=flat-square)
 ![last commit](https://img.shields.io/github/last-commit/oslabs-beta/tkyo-drift?style=flat-square)
 
-TKYO Drift is a lightweight, transparent AI drift tracking library for AI workflows of any complexity. It embeds text inputs and compares them to a configurable baseline to detect both drift in an individual input's semantic, conceptual, or lexical meaning over time, as well as population distribution stability across a range of scalar metrics.
+TKYO Drift is a lightweight, transparent AI drift tracking library for AI workflows of any complexity. It embeds text inputs and compares them to a configurable baseline to detect both drift in an individual input's semantic & conceptual meaning over time, as well as population distribution stability across a range of scalar metrics.
 
 **At the time of writing, this tool is only able to ingest data from mono modal text AI workflows.**
 
@@ -160,7 +160,7 @@ TKYODrift is designed to run asynchronously in a backend environment, making it 
 
 When the one-off embedding mode is called as above, the system runs as a 'fire-and-forget' process that will record scalar and vector drift without delaying the user response. **Latency impacts are limited to system throughput, not response time**.
 
-To minimize load overhead, TKYO Drift includes an internal `MODEL_CACHE` that persists transformer models (e.g., semantic/conceptual/lexical encoders) in memory between requests. When used in a **warm backend process**, this prevents the need to reload model weights on each call, which saves up to **52%** of total runtime, as seen in the performance breakdown below.
+To minimize load overhead, TKYO Drift includes an internal `MODEL_CACHE` that persists transformer models (e.g., semantic/conceptual encoders) in memory between requests. When used in a **warm backend process**, this prevents the need to reload model weights on each call, which saves up to **52%** of total runtime, as seen in the performance breakdown below.
 
 Drift tracking can be injected at any point in the pipeline where raw text data is available:
 
@@ -190,7 +190,7 @@ The result is a production-safe drift observability layer that provides transpar
 
 This table represents a sample runtime breakdown of the one-off embedding flow, measured using the default models in a local Node.js environment with this hardware:
 
-![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](https://github.com/oslabs-beta/tkyo-drift/raw/master/hardware.png)
+![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](./assets//hardware.png)
 
 Your actual performance will vary depending on:
 
@@ -332,7 +332,7 @@ ID, TIMESTAMP, I/O TYPE, SEMANTIC ROLLING EUC, SEMANTIC TRAINING EUC, CONCEPT RO
 - Neither the log, nor the binary files, contain your users input or AI outputs. This data is not necessary to calculate drift, and its exclusion is an intentional choice for data privacy.
 
 ```
-Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your lexical model from "lexical" to "linguistic" when writing to the log, the makeLogEntry method of the Drift Class would work, but the log Parser would fail.
+Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your conceptual embedding model from "concept" to "vibes", when writing to the log the makeLogEntry method of the Drift Class would work, but the log parser would fail.
 
 Keep in mind, however, you can change models any time you like, though that will brick your drift calculations for a different reason; your inputs/outputs will be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
 ```
@@ -345,7 +345,7 @@ Invoke the logs with `tkyo cos <number of days>` and `tkyo scalar` for each of t
 
 Usage: `tkyo cos <number of days>`
 
-![An image of the print log CLI tool's output, displaying the average cosine similarity across a range of input types, drift types, and baseline types. For example, the input IO Type for the rolling baseline data for the semantic embedding model displays an average cosine similarity of 1, or no semantic drift. ](https://github.com/oslabs-beta/tkyo-drift/raw/master/printLogCLI.png)
+![An image of the print log CLI tool's output, displaying the average cosine similarity across a range of input types, drift types, and baseline types. For example, the input IO Type for the rolling baseline data for the semantic embedding model displays an average cosine similarity of 1, or no semantic drift. ](./assets/printLogCLI.png)
 
 Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
@@ -359,7 +359,7 @@ If this bothers you, you can remove line 2 from the COS and EUC logs after you u
 
 Usage: `tkyo scalar`
 
-![An image of the print Scalar CLI tool's output, displaying metric comparisons between the training and rolling baseline values. For example, avgWordLength for inputs has a mean of 4.82 characters in the training data, but a mean of 4.49 characters in the rolling data, leading to a mean delta of -0.34, and a PSI value of 0.017 which represents stable populations between the two. ](https://github.com/oslabs-beta/tkyo-drift/raw/master/printScalarCLI.png)
+![An image of the print Scalar CLI tool's output, displaying metric comparisons between the training and rolling baseline values. For example, avgWordLength for inputs has a mean of 4.82 characters in the training data, but a mean of 4.49 characters in the rolling data, leading to a mean delta of -0.34, and a PSI value of 0.017 which represents stable populations between the two. ](./assets/printScalarCLI.png)
 
 This tool parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. L2 norm is an embedding model specific metric, and will be captured once per model while all others are input specific and are captures once per input. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
@@ -396,13 +396,6 @@ TKYO Drift uses remote embedding models on HuggingFace.co for inference using th
 
   https://huggingface.co/intfloat/e5-base-v2
 
-- `all-MiniLM-L6-v2`: Used for lexical drift or changes in word choice.
-
-  https://huggingface.co/Xenova/all-MiniLM-L6-v2
-
-  https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
-
-While L6 is a subset of L12, it is also the case that lexical drift is a subset of semantic drift. This model can be disabled in both `tkyoDrift.js` and `util/tkyoDriftSetTraining.py` if you believe that MiniLM-L12 is comprehensive enough to provide drift tracking for both types. This speeds up one-off and batched operations by about 10%.
 
 You might be thinking: "Can I serialize a loaded model to disk and reuse it?"
 
@@ -423,11 +416,11 @@ While the Xenova transformer library is a javascript equivalent of the Hugging F
 
 Drift is detected across combinations of:
 
-- `modelType`: semantic, concept, lexical
+- `modelType`: semantic, concept
 - `ioType`: a string you specify
 - `baselineType`: rolling, training
 
-This results in six cosine similarity and euclidean distance comparisons (assuming you use the default models) for each ioType you declare. Since all drift calculations are performed against the same ioType, each specified type will increase your file counts linearly.
+This results in four cosine similarity and euclidean distance comparisons (assuming you use the default models) for each ioType you declare. Since all drift calculations are performed against the same ioType, each specified type will increase your file counts linearly.
 
 - All embeddings are pooled across all input tokens to get mean values from the input
 - All embeddings are saved without normalization, but are normalized before COS similarity comparisons.
@@ -451,7 +444,7 @@ The training baseline represents the set of inputs used to generate the initial 
 
 - `Hybrid`: Use the rolling file to provide oldest K (default 10,000) and newest N (default 1,000) simultaneously.
 
-In the event that there is no training data supplied to the system, the Drift analyzer will use the oldest K values entered into the rolling file to represent mock 'training' data, while the newest K values represent the 'rolling' data. This allows us to compare drift against an anchor point to see drift over time, while still having a rolling window to see shock impacts to the system caused by new concepts/semantics/lexicon.
+In the event that there is no training data supplied to the system, the Drift analyzer will use the oldest K values entered into the rolling file to represent mock 'training' data, while the newest K values represent the 'rolling' data. This allows us to compare drift against an anchor point to see drift over time, while still having a rolling window to see shock impacts to the system caused by new concepts/semantics.
 
 ### Binary Embedding Storage
 
@@ -467,7 +460,6 @@ At the time of writing, the default models in this library have either 768 or 38
 | ------------------- | ------------------------------- | ---------- | ------------------------- | ---------------------------- |
 | `all-MiniLM-L12-v2` | Semantic (communication method) | 384        | 768 bytes                 | ~750 MB                      |
 | `e5-base-v2`        | Concept (communication intent)  | 768        | 1,536 bytes               | ~1.5 GB                      |
-| `all-MiniLM-L6-v2`  | Lexical (syntax)                | 384        | 768 bytes                 | ~750 MB                      |
 
 Note: 1 MB = 1,048,576 bytes (binary MB), but here we're rounding to 1 MB = 1,000,000 bytes for simplicity.
 

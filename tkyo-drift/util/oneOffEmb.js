@@ -11,10 +11,9 @@ import captureSharedScalarMetrics from './captureSharedScalarMetrics.js';
 export const MODELS = {
   semantic: 'Xenova/all-MiniLM-L12-v2', // Measures change in communication method
   concept: 'Xenova/e5-base-v2', // Measures change in communication intent
-  lexical: 'Xenova/all-MiniLM-L6-v2', // Measures change in syntax
 };
 // Log, Scalar, and Vector root output directory
-export const OUTPUT_DIR = path.resolve('./data');
+export const OUTPUT_DIR = path.resolve('./tkyodata');
 // Cache of pipeline output results, to speed up model loading
 export const MODEL_CACHE = {};
 

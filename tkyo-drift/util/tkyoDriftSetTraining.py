@@ -22,7 +22,6 @@ def tkyoDriftSetTraining(data_set_Path, io_type, io_type_name):
     MODELS = {
         "semantic": "sentence-transformers/all-MiniLM-L12-v2",
         "concept": "intfloat/e5-base-v2",
-        "lexical": "sentence-transformers/all-MiniLM-L6-v2",
     }
 
 
