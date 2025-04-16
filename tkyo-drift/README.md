@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="assets/tkyo-banner.png" width="100%" alt="TKYO Drift Banner">
+  <img src="https://github.com/oslabs-beta/tkyo-drift/raw/master/tkyo-banner.png" width="100%" alt="TKYO Drift Banner">
 </p>
+
 
 # AI Temporal Knowledge Yield Output Drift Tracker (TKYO Drift)
 
@@ -88,12 +89,10 @@ Note that the size of input/output text, embedding dimensions, and how many embe
 
 # How do you install this thing?
 
-TODO: Update this when the NPM package is built.
-
 1. Install the NPM package:
 
 ```bash
-npm install tkyoDrift
+npm install tkyodrift
 ```
 
 2. Install the Python Dependencies:
@@ -124,14 +123,12 @@ tkyoDrift(userSubmission, 'input')
 
 # How do you use this thing?
 
-TODO: Update this after NPM is built
-
 You can interact with this library in a couple ways;
 
-- Dispatch a one-off text input and input type to `tkyoDrift()`
-- Dispatch training data through a batch upload\* to `tkyoDriftSetTrainingHook()`
-- Request a CLI print out of the Cosine Similarity log's summary using `npx tkyoDrift #` (where # is a number of days)
-- Request a CLI print out of the scalar metric's log using `npx tkyoDrift scalar`
+- Dispatch a one-off text input and input type to `tkyoDrift(input, ioType)`
+- Dispatch training data through a batch upload\* using `tkyo train <path to data> <column name> <ioType>`
+- Request a CLI print out of the Cosine Similarity log's summary using `tkyo <number of days>`
+- Request a CLI print out of the scalar metric's log using `tkyo scalar`
 - Export the logs into your Data Viz platform
 
 ```
@@ -142,7 +139,9 @@ There is also a small training file downloader script in the util folder called 
 
 ## One-off Ingestion
 
-`tkyoDrift.js(text, type)` handles individual inputs for drift comparison. It:
+Usage: Add `tkyoDrift.js(text, ioType)` in your file, along with an import statement.
+
+`tkyoDrift.js(text, ioType)` handles individual inputs for drift comparison. It:
 
 - Accepts two text strings as `input` and `ioType` parameters.
 - Embeds using as many models as you specify (default 3).
@@ -191,7 +190,7 @@ The result is a production-safe drift observability layer that provides transpar
 
 This table represents a sample runtime breakdown of the one-off embedding flow, measured using the default models in a local Node.js environment with this hardware:
 
-![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](assets/hardware.png)
+![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](https://github.com/oslabs-beta/tkyo-drift/raw/master/hardware.png)
 
 Your actual performance will vary depending on:
 
@@ -213,7 +212,9 @@ For higher-frequency use cases (e.g., token-level drift or live CoT chains), we 
 
 ## Training Ingestion
 
-`tkyoDriftSetTraining.js(filepath, columnName, ioType)` handles full dataset ingestion for baseline creation. It:
+Usage: `tkyo train <path to data> <column name> <ioType>`
+
+You can call on the training embedding function using the cli command `tkyo train <path to data> <column name> <ioType>`. This will call the `tkyoDriftSetTraining.js(filepath, columnName, ioType)` function which passes in your arguments and handles full dataset ingestion for baseline creation. It:
 
 - Accepts a filepath that contains `columnName` and how you want to reference it as `ioType`.
 - Captures text level, model independent scalar metrics.
@@ -338,11 +339,13 @@ Keep in mind, however, you can change models any time you like, though that will
 
 ## CLI Tools
 
-TODO: Add the command we need people to enter to trigger this log here after the NPM package is built.
+Invoke the logs with `tkyo cos <number of days>` and `tkyo scalar` for each of their respective datasets. The `tkyo cos` command uses the `printLogCLI.js` script to do the following, while the `tkyo scalar` command invokes the `printScalarCLI.js` below this block.
 
 ### `printLogCLI.js`
 
-![An image of the print log CLI tool's output, displaying the average cosine similarity across a range of input types, drift types, and baseline types. For example, the input IO Type for the rolling baseline data for the semantic embedding model displays an average cosine similarity of 1, or no semantic drift. ](assets/printLogCLI.png)
+Usage: `tkyo cos <number of days>`
+
+![An image of the print log CLI tool's output, displaying the average cosine similarity across a range of input types, drift types, and baseline types. For example, the input IO Type for the rolling baseline data for the semantic embedding model displays an average cosine similarity of 1, or no semantic drift. ](https://github.com/oslabs-beta/tkyo-drift/raw/master/printLogCLI.png)
 
 Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
@@ -354,7 +357,9 @@ If this bothers you, you can remove line 2 from the COS and EUC logs after you u
 
 ### `printScalarCLI.js`
 
-![An image of the print Scalar CLI tool's output, displaying metric comparisons between the training and rolling baseline values. For example, avgWordLength for inputs has a mean of 4.82 characters in the training data, but a mean of 4.49 characters in the rolling data, leading to a mean delta of -0.34, and a PSI value of 0.017 which represents stable populations between the two. ](assets/printScalarCLI.png)
+Usage: `tkyo scalar`
+
+![An image of the print Scalar CLI tool's output, displaying metric comparisons between the training and rolling baseline values. For example, avgWordLength for inputs has a mean of 4.82 characters in the training data, but a mean of 4.49 characters in the rolling data, leading to a mean delta of -0.34, and a PSI value of 0.017 which represents stable populations between the two. ](https://github.com/oslabs-beta/tkyo-drift/raw/master/printScalarCLI.png)
 
 This tool parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. L2 norm is an embedding model specific metric, and will be captured once per model while all others are input specific and are captures once per input. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
