@@ -26,7 +26,7 @@ export default async function tkyoDriftSetTraining(
         );
       }
       // Ensures we are running tkyoDriftSetTraining.py correctly
-      const scriptPath = path.join(__dirname, './util/tkyoDriftSetTraining.py');
+      const scriptPath = path.join(__dirname, './tkyoDriftSetTraining.py');
       const pyProg = spawn('python3', [
         '-u',
         scriptPath,

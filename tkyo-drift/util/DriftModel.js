@@ -4,7 +4,7 @@ import { error } from 'console';
 import fsPromises from 'fs/promises';
 import { spawn } from 'child_process';
 import { pipeline } from '@xenova/transformers';
-import { OUTPUT_DIR, MODEL_CACHE } from '../tkyoDrift.js';
+import { OUTPUT_DIR, MODEL_CACHE } from './oneOffEmb.js';
 import { fileURLToPath } from 'url';
 
 export class DriftModel {

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@*::::-%@@#:..-:..+@@@@@@@@@%#++==+*%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%%%%%%##########********#######%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@+:#@@@@@@=.-=+#++:..:=+*##*=..*%%@@@@%#=:@@@@@@@@@@%**@@@@@@@@@@@%#+=-::..::-==+**######%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%#:.-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        
 @@@@@@@@@@@@@@@@@@@@@@@@@@@+%@@@@@@@@@@:.-:=#@@@@@@@@@@@@@%%=%@@@@@@%*.:-*%%%%*-*+=-:.:-=+*#%%######%%%%###***+++=====--------======+++++++****####%%%%@@%%#=--:+@@@@@@@@@@@@@@@@@@@@@@@=-@@@@@@@@@@@@@@@@@@@@@@@        
@@ -41,176 +42,86 @@
 @@@@@@@@@@@@@@@@@%+:--::=****=:..::-. ......       ...:::::..........................                                                                                                                           .        
 @%%%####******+++++++++=============------:::::.............                                                   ...............................::::::::::::::::::::::------=====+++++++*******#######%%%%%%@@@@@@@        
 @@@@@@@@@@@@@@@@@@%%%##############%%%%%%%%%%%%%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@*/
-import fs from 'fs';
+import tkyoDriftSetTrainingHook from './util/tkyoDriftSetTrainingHook.js';
+import printScalarCLI from './util/printScalarCLI.js';
+import printLogCLI from './util/printLogCLI.js';
+import tkyoDrift from './util/oneOffEmb.js';
+import chalk from 'chalk';
 import path from 'path';
-import { v4 } from 'uuid';
-import { DriftModel } from './util/DriftModel.js';
-import makeLogEntry from './util/makeLogEntry.js';
-import makeErrorLogEntry from './util/makeErrorLogEntry.js';
-import captureSharedScalarMetrics from './util/captureSharedScalarMetrics.js';
+import fs from 'fs';
 
-// * Global Variables for the utilities
-//  Embedding Models
-export const MODELS = {
-  semantic: 'Xenova/all-MiniLM-L12-v2', // Measures change in communication method
-  concept: 'Xenova/e5-base-v2', // Measures change in communication intent
-  lexical: 'Xenova/all-MiniLM-L6-v2', // Measures change in syntax
-};
-// Log, Scalar, and Vector root output directory
-export const OUTPUT_DIR = path.resolve('./data');
-// Cache of pipeline output results, to speed up model loading
-export const MODEL_CACHE = {};
+// Get the commands from the CLI (the first 2 are not commands)
+const args = process.argv.slice(2);
 
-// * One Off Ingestion Pipeline Logic
-export default async function tkyoDrift(text, ioType) {
-  // Stopwatch START 🏎️
-  // console.time('Drift Analyzer Full Run');
+// Only run if the command is a "tkyo" command
+if (process.argv[1].endsWith('tkyo')) {
+  // the first argument is the command
+  const [command, ...rest] = args;
 
-  // Make model holder object, io types, baselines and directories (don't change these)
-  const driftModels = {};
-  const baselineTypes = ['rolling', 'training'];
-  const subdirectories = ['vectors', 'scalars', 'logs'];
-
-  //  ------------- << BEGIN try/catch Error Handling >> -------------
-  // * Error handling is done within model method calls, which send the error to the catch block.
-  try {
-    //  ------------- << Make Directories >> -------------
-    // Check if directory exists, if not, make it.
-    if (!fs.existsSync(OUTPUT_DIR)) {
-      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  // switch case to determine which file to invoke
+  switch (command) {
+    // ? tkyo cos <number of days>
+    case 'cos': {
+      const dayArgument = rest[0] || '30';
+      process.argv = ['node', 'printLogCLI.js', dayArgument];
+      await printLogCLI(dayArgument);
+      break;
     }
 
-    // Create subdirectories for vectors, scalars, and logs
-    for (const dir of subdirectories) {
-      const subdirPath = path.join(OUTPUT_DIR, dir);
-      if (!fs.existsSync(subdirPath)) {
-        fs.mkdirSync(subdirPath, { recursive: true });
-      }
+    // ? tkyo scalar
+    case 'scalar': {
+      await printScalarCLI();
+      break;
     }
 
-    // Validate model config (we need the / and it's gotta be a string)
-    for (const [type, name] of Object.entries(MODELS)) {
-      if (typeof name !== 'string' || !name.includes('/')) {
-        throw new Error(
-          `Invalid or missing model ID for "${type}" model: "${name}"`
-        );
-      }
-    }
+    // ? tkyo train <path to data> <column name> <ioType>
+    case 'train': {
+      const [pathToData, columnName, ioType] = rest;
 
-    //  ------------- << Construct Model Combinations >> -------------
-    try {
-      // * For each model, for each baselineType, make a model and assign to driftModels object
-      for (const [modelType, modelName] of Object.entries(MODELS)) {
-        for (const baselineType of baselineTypes) {
-          const key = `${modelType}.${ioType}.${baselineType}`;
-          driftModels[key] = new DriftModel(
-            modelType,
-            modelName,
-            ioType,
-            baselineType
-          );
-        }
+      // Error handle when 
+      if (!pathToData || !columnName || !ioType) {
+        console.error(chalk.blueBright(
+          'Usage: tkyo train <path to data> <column name> <ioType>'
+        ));
+        process.exit(1);
       }
-    } catch (error) {
-      throw new Error(
-        `Error while constructing DriftModel objects: ${error.message}`
+
+      // If someone calls the train command, we normalize the path.
+      const normalizedPath = path.resolve(
+        process.cwd(),
+        pathToData.replace(/\\/g, '/')
       );
-    }
-    //  ------------- << Initialize Model File Pathing >> -------------
-    // * For each model, invoke set file path method
-    // ! NOTE: If training data is not supplied, it will use the rolling file's path
-    // Yes, this is intentional, check the ReadMe for why...
-    for (const model of Object.values(driftModels)) {
-      model.setFilePaths();
-    }
 
-    //  ------------- << Load the Xenova Models >> -------------
-    // * Load all models sequentially
-    // ! NOTE: Loading models sequentially is intentional, as they check the cache before attempting to load
-    await Promise.all(
-      Object.values(driftModels).map(async (model) => model.loadModel())
-    );
+      // Error handle when the path does not exist.
+      if (!fs.existsSync(normalizedPath)) {
+        console.error(chalk.red(`The dataSetPath provided does not exist.`));
+      }
 
-    //  ------------- << Get Embeddings >> -------------
-    // * Get embeddings for all inputs and outputs in parallel
-    await Promise.all(
-      Object.values(driftModels).map(async (model) => model.makeEmbedding(text))
-    );
-
-    //  ------------- << Get Scalar Metrics >> -------------
-    // Capture shared scalar metrics once for each I/O type, for each baseline type
-    captureSharedScalarMetrics(text, ioType);
-
-    // * Calculate PSI values for scalar metric comparison
-    await Promise.all(
-      Object.values(driftModels).map(async (model) => {
-        model.captureModelSpecificScalarMetrics(text);
-      })
-    );
-
-    //  ------------- << Save Embedding Data >> -------------
-    // * Save the embedding to the rolling/training files in parallel
-    // ! NOTE: Write ops are done to separate files, this is safe
-    await Promise.all(
-      Object.values(driftModels).map(async (model) => model.saveToBin())
-    );
-
-    //  ------------- << Save Scalar Data >> -------------
-    // * Save the embedding to the rolling/training files in parallel
-    // Capture unique scalar metrics for each embedding model
-    // ! NOTE: Write ops are done to separate files, this is safe
-    await Promise.all(
-      Object.values(driftModels).map(async (model) => model.saveScalarMetrics())
-    );
-
-    //  ------------- << Read Bin Files >> -------------
-    // * Read up to N embeddings from binary blobs in parallel
-    // ! NOTE: Read ops are non-blocking, this is safe
-    // ? See Training Max Size/Rolling Max Size in ReadMe for more info
-    // For each model, read from disk
-    await Promise.all(
-      Object.values(driftModels).map(async (model) => model.readFromBin())
-    );
-
-    //  ------------- << Get Baseline >> -------------
-    // * Calculate Baseline values for each model in serial
-    // For each model, calculate the baseline
-    for (const model of Object.values(driftModels)) {
-      model.getBaseline();
+      await tkyoDriftSetTrainingHook(normalizedPath, columnName, ioType);
+      console.log(chalk.green("Job's done."));
+      break;
     }
 
-    //  ------------- << Get Cosine Similarity >> -------------
-    // * Calculate Cosine Similarity between input and baseline in serial
-    const similarityResults = Object.fromEntries(
-      Object.entries(driftModels).map(([key, model]) => [
-        key,
-        model.getCosineSimilarity(),
-      ])
-    );
+    // ? help commands
+    default:
+      console.log(chalk.gray(`
+↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓    ↑↑↑     ↗↓↓↓↗     ↓↓↓         ↓↓↓    ↓↓↓↓↓↓↓↓↓↓↓↓↖
+       ↑↑↑          ↑↑↑    ↗↑↑↑       ↑↑↑         ↑↑↑   ↑↑↑↑         ↖↑↑
+      ↑↑↑          ↑↑↑   ↗↑↑↑        ↑↑↑         ↑↑↑   ↑↑↑           ↖↑↑
+     ↑↑↑          ↑↑↑↑↑↑↑↘          ↑↑↑        ↑↑↑↑   ↑↑↑            ↖↑↑
+    ↖↑↑         →↑↑    ↑↑↑↘         ↑↑↑↑↑↑↑↑↑↑↑↑↑    ←↑↑            ↑↑↑↗
+    ↑↑↑         ↑↑↑     ↑↑↑↘             ↑↑↑         ↑↑↑           ↗↑↑↓
+   ↑↑↑         ↑↑↑       ↑↑↑↘           ↑↑↑          ↑↑↑↑        ↗↑↑↑
+  ↑↑↑         ↑↑↑         ↑↑↑↘         ↑↑↑            ↑↑↑↑↑↑↑↑↑↑↑↑↑↗
 
-    //  ------------- << Get Euclidean Distance >> -------------
-    // * Calculate Euclidean Dist. between input and baseline in serial
-    const distanceResults = Object.fromEntries(
-      Object.entries(driftModels).map(([key, model]) => [
-        key,
-        model.getEuclideanDistance(),
-      ])
-    );
+Usage:
+  ${chalk.yellowBright('tkyo')} ${chalk.white('cos')} ${chalk.blueBright('<number of days>')}                         Show COS Drift logs for last N days
+  ${chalk.yellowBright('tkyo')} ${chalk.white('scalar')}                                       Show scalar drift comparison
+  ${chalk.yellowBright('tkyo')} ${chalk.white('train')} ${chalk.blueBright('<path to data> <column name> <ioType>')}  Embed dataset and update training baseline
 
-    //  ------------- << Make & Append Log Entries >> -------------
-    // * Push the results to each log
-    // Make shared ID and date for the cosine and Euclidean logs
-    const sharedID = v4();
-    makeLogEntry(sharedID, similarityResults, 'COS');
-    makeLogEntry(sharedID, distanceResults, 'EUC');
-
-    //  ------------- << END try/catch Error Handling >> -------------
-    // * Push any errors to the error log
-    // ! NOTE: This platform intentionally fails silently
-  } catch (error) {
-    makeErrorLogEntry(error);
+Readme docs in the node package or at ${chalk.blueBright('https://github.com/oslabs-beta/tkyo-drift')}
+      `));
   }
-
-  // Stopwatch END 🏁 (Comment this out in production)
-  // console.timeEnd('Drift Analyzer Full Run');
 }
+
+export { tkyoDrift, tkyoDriftSetTrainingHook, printLogCLI, printScalarCLI };
