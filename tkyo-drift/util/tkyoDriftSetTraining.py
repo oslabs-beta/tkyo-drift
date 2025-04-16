@@ -20,7 +20,8 @@ def tkyoDriftSetTraining(data_set_Path, io_type, io_type_name):
 
     # Define the models
     MODELS = {
-        "semantic": "sentence-transformers/all-MiniLM-L12-v2",
+        "semantic": "deepset/sentence_bert",
+        #"semantic": "sentence-transformers/all-MiniLM-L12-v2",
         "concept": "intfloat/e5-base-v2",
     }
 

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import readline from 'readline';
 import path from 'path';
-import { OUTPUT_DIR } from './oneOffEmb';
+import { OUTPUT_DIR } from './oneOffEmb.js';
 
 // * Function to read scalar metrics from the scalar jsonl files and group them by metric name
 export async function loadScalarMetrics(
@@ -19,13 +19,15 @@ export async function loadScalarMetrics(
 
     // Configure file path based on model type first
     if (modelType) {
-      filePath = path.join(OUTPUT_DIR,
+      filePath = path.join(
+        OUTPUT_DIR,
         'scalars',
         // ? If the scalar metric is model specific, this will catch it (when this function gets invoked with a model value)
         `${ioType}.${metric}.${modelType}.${baselineType}.scalar.jsonl`
       );
     } else {
-      filePath = path.join(OUTPUT_DIR,
+      filePath = path.join(
+        OUTPUT_DIR,
         'scalars',
         // ? Otherwise, the scalar metric will come from a model agnostic file
         `${ioType}.${metric}.${baselineType}.scalar.jsonl`
@@ -35,13 +37,15 @@ export async function loadScalarMetrics(
     // handle hybrid mode if it's true
     if (hybridMode) {
       if (modelType) {
-        filePath = path.join(OUTPUT_DIR,
+        filePath = path.join(
+          OUTPUT_DIR,
           'scalars',
           // ? If the scalar metric is model specific, this will catch it (when this function gets invoked with a model value)
           `${ioType}.${metric}.${modelType}.rolling.scalar.jsonl`
         );
       } else {
-        filePath = path.join(OUTPUT_DIR,
+        filePath = path.join(
+          OUTPUT_DIR,
           'scalars',
           // ? Otherwise, the scalar metric will come from a model agnostic file
           `${ioType}.${metric}.rolling.scalar.jsonl`

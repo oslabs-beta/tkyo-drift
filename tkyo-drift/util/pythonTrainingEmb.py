@@ -189,7 +189,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             # Save each metric in its own file
             for metric, value in model_metrics.items():
                 # Build file name: ioType.metric.modelType.training.scalar.jsonl
-                file_path = f"tkyodata/scalars/{io_type}.{metric}.{model_type}.training.scalar.jsonl"
+                file_path = f"tkyoData/scalars/{io_type}.{metric}.{model_type}.training.scalar.jsonl"
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
                 # Write single metric with timestamp to file
@@ -227,10 +227,10 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
     embeddings = np.concatenate(embeddings)
 
     # Create data directories if they doesn't exist
-    os.makedirs("tkyodata/vectors", exist_ok=True)
+    os.makedirs("tkyoData/vectors", exist_ok=True)
     #If you change the threshold below (currently 100,000), make sure you also change it on line 54 of pythonHNSW.py. Otherwise you will clip your training data set.
-    if len(embeddings) < 100000:
-        print(f"You have < 100000 {io_type} embeddings: Saving unfiltered embeddings to data directory.")
+    if len(embeddings) < 10000:
+        print(f"You have < 10000 {io_type} embeddings: Saving unfiltered embeddings to data directory.")
         # Assign the number of vectors for the training data
         num_vectors = embeddings.shape[0]
 
@@ -241,7 +241,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
         header_bytes = np.array([num_vectors, dims], dtype=np.uint32).tobytes()
 
         # Write to file (header first, then data)
-        with open(f"tkyodata/vectors/{model_type}.{io_type}.training.bin", "wb") as f:
+        with open(f"tkyoData/vectors/{model_type}.{io_type}.training.bin", "wb") as f:
 
             # Write 8-byte header first
             f.write(header_bytes)
@@ -249,7 +249,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
             # Then write the data
             embeddings.astype(np.float32).tofile(f)
     else:
-        print(f"You have >=  100000 {io_type} embeddings: Performing K Means analysis to filter embeddings.")
+        print(f"You have >=  10000 {io_type} embeddings: Performing K Means analysis to filter embeddings.")
         kMeansEmbedding = pythonKMeans.kMeansClustering(embeddings)
 
         # Assign the number of vectors for the training data
@@ -263,7 +263,7 @@ def trainingEmb(model_type, model_name, data_path, io_type, io_type_name):
 
         # Write to file (header first, then data)
         print(f"Writing KMeans centroids to disk.")
-        with open(f"tkyodata/vectors/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
+        with open(f"tkyoData/vectors/{model_type}.{io_type}.training.kmeans.bin", "wb") as f:
 
             # Write 8-byte header first
             f.write(header_bytes)
