@@ -1,7 +1,7 @@
 import fsPromises from 'fs/promises';
 import fs from 'fs';
 import path from 'path';
-import { OUTPUT_DIR } from '../tkyoDrift.js';
+import { OUTPUT_DIR } from './oneOffEmb.js';
 
 // Calculates the shared scalar values for a given input/output pair
 export default async function captureSharedScalarMetrics(text, ioType) {

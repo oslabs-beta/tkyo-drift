@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { OUTPUT_DIR } from '../tkyoDrift.js';
+import { OUTPUT_DIR } from './oneOffEmb.js';
 
 // * Logs a structured error entry to a CSV in the data folder
 export default function makeErrorLogEntry(error) {
