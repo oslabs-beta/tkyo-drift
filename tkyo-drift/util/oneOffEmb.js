@@ -9,9 +9,10 @@ import captureSharedScalarMetrics from './captureSharedScalarMetrics.js';
 // * Global Variables for the utilities
 //  Embedding Models
 export const MODELS = {
-  semantic: 'Xenova/sentence_bert', // Measures change in communication method
-  // semantic: 'Xenova/all-MiniLM-L12-v2', 
-  concept: 'Xenova/e5-base-v2', // Measures change in communication intent
+  // t5: 'Xenova/sentence-t5-large',
+  // bert: 'Xenova/sentence_bert', 
+  mini: 'Xenova/all-MiniLM-L12-v2',
+  e5: 'Xenova/e5-base-v2', 
 };
 // Log, Scalar, and Vector root output directory
 export const OUTPUT_DIR = path.resolve('./tkyoData');

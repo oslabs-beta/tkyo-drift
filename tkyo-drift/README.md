@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/tkyo-banner.png" width="100%" alt="TKYO Drift Banner">
+  <img src="https://github.com/oslabs-beta/tkyo-drift/raw/dev/tkyo-drift/assets/tkyo-banner.png" width="100%" alt="TKYO Drift Banner">
 </p>
 
 
@@ -190,7 +190,7 @@ The result is a production-safe drift observability layer that provides transpar
 
 This table represents a sample runtime breakdown of the one-off embedding flow, measured using the default models in a local Node.js environment with this hardware:
 
-![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](./assets//hardware.png)
+![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](https://github.com/oslabs-beta/tkyo-drift/raw/dev/tkyo-drift/assets/hardware.png)
 
 Your actual performance will vary depending on:
 
@@ -348,7 +348,7 @@ Note that if you are installing tkyo locally, you need to add `npx` before your 
 
 Usage: `tkyo cos <number of days>`
 
-![An image of the print log CLI tool's output, displaying the average cosine similarity across a range of input types, drift types, and baseline types. For example, the input IO Type for the rolling baseline data for the semantic embedding model displays an average cosine similarity of 1, or no semantic drift. ](./assets/printLogCLI.png)
+![An image of the print log CLI tool's output, displaying the average cosine similarity across a range of input types, drift types, and baseline types. For example, the input IO Type for the rolling baseline data for the semantic embedding model displays an average cosine similarity of 1, or no semantic drift. ](https://github.com/oslabs-beta/tkyo-drift/raw/dev/tkyo-drift/assets/printLogCLI.png)
 
 Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
@@ -362,7 +362,7 @@ If this bothers you, you can remove line 2 from the COS and EUC logs after you u
 
 Usage: `tkyo scalar`
 
-![An image of the print Scalar CLI tool's output, displaying metric comparisons between the training and rolling baseline values. For example, avgWordLength for inputs has a mean of 4.82 characters in the training data, but a mean of 4.49 characters in the rolling data, leading to a mean delta of -0.34, and a PSI value of 0.017 which represents stable populations between the two. ](./assets/printScalarCLI.png)
+![An image of the print Scalar CLI tool's output, displaying metric comparisons between the training and rolling baseline values. For example, avgWordLength for inputs has a mean of 4.82 characters in the training data, but a mean of 4.49 characters in the rolling data, leading to a mean delta of -0.34, and a PSI value of 0.017 which represents stable populations between the two. ](https://github.com/oslabs-beta/tkyo-drift/raw/dev/tkyo-drift/assets/printScalarCLI.png)
 
 This tool parses the scalar jsonl files to calculate scalar distributions across the training and rolling datasets and delta mean and delta standard deviation between the two distributions. L2 norm is an embedding model specific metric, and will be captured once per model while all others are input specific and are captures once per input. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
@@ -387,13 +387,13 @@ Note: Without batch embedding your training data, scalar metric comparison will 
 
 TKYO Drift uses remote embedding models on HuggingFace.co for inference using the Xenova Transformers library in javascript or the python native hugging face library in python. By default, the system operates in JavaScript using a lightweight transformer pipeline, with Python scripts injected as required to improve speed when performing batched operations. The python equivalent embedding pipeline uses MPS → GPU → CPU depending on what system you are using and whether you have the appropriate NVIDIA CUDA drivers.
 
-- `all-MiniLM-L12-v2`: Used for semantic drift or changes in tone or communication style.
+- `all-MiniLM-L12-v2`: Used for converting short pieces of text into vectors for sentence similarity.
 
   https://huggingface.co/Xenova/all-MiniLM-L12-v2
 
   https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2
 
-- `e5-base-v2`: Used for concept drift or changes in topic or intent.
+- `e5-base-v2`: Used for query/passage retrieval based on vector similarity. Which is useful to embed incoming inputs for similarity clustering.
 
   https://huggingface.co/Xenova/e5-base-v2
 
@@ -459,10 +459,10 @@ This yields `(models * I/Os * baselines)` file combinations, and at the minimum 
 
 At the time of writing, the default models in this library have either 768 or 384 dimensions per input.
 
-| Model               | Purpose                         | Dimensions | Bytes per Input (float16) | File Size (1,000,000 inputs) |
-| ------------------- | ------------------------------- | ---------- | ------------------------- | ---------------------------- |
-| `all-MiniLM-L12-v2` | Semantic (communication method) | 384        | 768 bytes                 | ~750 MB                      |
-| `e5-base-v2`        | Concept (communication intent)  | 768        | 1,536 bytes               | ~1.5 GB                      |
+| Model               | Dimensions | Bytes per Input (float16) | File Size (1,000,000 inputs) |
+| ------------------- |  ---------- | ------------------------- | ---------------------------- |
+| `all-MiniLM-L12-v2` |    384        | 768 bytes                 | ~750 MB                      |
+| `e5-base-v2`        |     768        | 1,536 bytes               | ~1.5 GB                      |
 
 Note: 1 MB = 1,048,576 bytes (binary MB), but here we're rounding to 1 MB = 1,000,000 bytes for simplicity.
 
