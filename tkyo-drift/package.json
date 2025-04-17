@@ -1,11 +1,12 @@
 {
   "name": "tkyodrift",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Lightweight CLI tool and library for detecting AI model drift using embeddings and scalar metrics. Tracks semantic, conceptual, and lexical change over time.",
   "main": "./tkyoDrift.js",
   "bin":{
     "tkyo": "./tkyoDrift.js"
   },
+  "types": "./tkyo.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/oslabs-beta/tkyo-drift"

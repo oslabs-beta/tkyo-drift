@@ -20,7 +20,7 @@ export default async function printScalarCLI() {
   // Regex pattern to extract metadata from filenames:
   // Format: ioType.metric.[modelType?].baseline.scalar.jsonl
   const scalarFileRegex =
-    /^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)(?:\.([a-zA-Z]+))?\.(training|rolling)\.scalar\.jsonl$/;
+    /^([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)(?:\.([a-zA-Z0-9_]+))?\.(training|rolling)\.scalar\.jsonl$/;
 
   // Container to group scalar file pairs (training + rolling) by metric/io/model
   const matchedPairs = new Map();
