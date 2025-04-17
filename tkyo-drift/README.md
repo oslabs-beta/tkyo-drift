@@ -33,7 +33,7 @@ Use it to answer questions like:
 - "Did a model update change how we paraphrase?"
 - "Are the kids using newfangled words that don’t make any sense?"
 
-Just keep in mind that this tool doesn't tell you why you are drifting, only that you are, by how much, where, when, and in what direction.
+Just keep in mind that this tool doesn't tell you why you are drifting, only that you are, by how much, where, and when.
 
 ## Table of Contents
 
@@ -104,7 +104,7 @@ pip install -r ./node_modules/tkyo-drift/requirements.txt
 3. Import tkyoDrift into your AI workflow pages:
 
 ```js
-import tkyoDrift from 'tkyoDrift'
+import tkyoDrift from 'tkyodrift'
 ```
 
 4. Add a function call to `tkyoDrift(text, inputType)` passing in your text and input type name:
@@ -129,10 +129,10 @@ You can interact with this library in a couple ways;
 - Dispatch training data through a batch upload\* using `tkyo train <path to data> <column name> <ioType>`
 - Request a CLI print out of the Cosine Similarity log's summary using `tkyo <number of days>`
 - Request a CLI print out of the scalar metric's log using `tkyo scalar`
-- Export the logs into your Data Viz platform
+- Export the logs into your external Data Viz platform
 
 ```
-* Do this from a strong PC, and then copy your data into the appropriate folders. Due to a number of factors (amount of data, length of individual records, lack of CUDA access, lack of memory, lack of cpu cores, count of embedding models) this process can take an exceptionally long time to complete.
+* We recommend that you do this from a strong PC, and then transfer your data into the appropriate folders. Due to a number of factors (amount of data, length of individual records, lack of CUDA access, lack of memory, lack of cpu cores, count of embedding models) this process can take an exceptionally long time to complete depending on the size of your training data.
 ```
 
 There is also a small training file downloader script in the util folder called downloadTrainingData.py that you can run to grab the training data from hugging face if you happen to be using a model for your workflow from there.
@@ -188,7 +188,7 @@ The result is a production-safe drift observability layer that provides transpar
 | Initialize Model File Pathing     | 0.06          | 0.01%           | 0           |
 | Construct Model Combinations      | 0.02          | 0.00%           | 0           |
 
-This table represents a sample runtime breakdown of the one-off embedding flow, measured using the default models in a local Node.js environment with this hardware:
+This table represents a sample runtime breakdown of the one-off embedding flow, measured using the default models in a local Node.js environment running on CPU encoding with this hardware:
 
 ![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](https://github.com/oslabs-beta/tkyo-drift/raw/dev/tkyo-drift/assets/hardware.png)
 
@@ -214,7 +214,7 @@ For higher-frequency use cases (e.g., token-level drift or live CoT chains), we 
 
 Usage: `tkyo train <path to data> <column name> <ioType>`
 
-You can call on the training embedding function using the cli command `tkyo train <path to data> <column name> <ioType>`. This will call the `tkyoDriftSetTraining.js(filepath, columnName, ioType)` function which passes in your arguments and handles full dataset ingestion for baseline creation. It:
+You can call on the training embedding function using the cli command `tkyo train`. This will call the `tkyoDriftSetTraining.js(filepath, columnName, ioType)` function which passes in your arguments and handles full dataset ingestion for baseline creation. It:
 
 - Accepts a filepath that contains `columnName` and how you want to reference it as `ioType`.
 - Captures text level, model independent scalar metrics.
@@ -408,7 +408,7 @@ So no, there's no good way to "freeze" a pipeline( ) and reload it faster... unl
 
 ### JS/Python Pipeline Split
 
-While the Xenova transformer library is a javascript equivalent of the Hugging Face python transformer library, the primary difference is that the former was made for JS by the xenova team while the latter was made for Python by huggingface themselves. The HF library allows for GPU acceleration, which is why it was chosen for batched calls. In either case, we are using the same transformer library for the same purpose. As such, Xenova/Hugging Face Transformers were chosen as the preferred choice of transformer libraries because:
+While the Xenova transformer library is a javascript equivalent of the Hugging Face python transformer library, the primary difference is that the former was made for JS by Xenova while the latter was made for Python by huggingface themselves. The HF library allows for GPU acceleration, which is why it was chosen for batched calls. In either case, we are using the same transformer library for the same purpose. As such, Xenova/Hugging Face Transformers were chosen as the preferred choice of transformer libraries because:
 
 - Embedding models are quite large, and including a wget or some other form of downloading models to run locally would require dealing with user authentication for the huggingface.com site, which we wanted to avoid.
 - People have good internet now, mostly, so we can get away with streaming the model conclusions to the workflow environment without dealing with a local model.
@@ -419,7 +419,7 @@ While the Xenova transformer library is a javascript equivalent of the Hugging F
 
 Drift is detected across combinations of:
 
-- `modelType`: semantic, concept
+- `modelType`: e5-base, mini-L12 by default
 - `ioType`: a string you specify
 - `baselineType`: rolling, training
 
@@ -459,7 +459,7 @@ This yields `(models * I/Os * baselines)` file combinations, and at the minimum 
 
 At the time of writing, the default models in this library have either 768 or 384 dimensions per input.
 
-| Model               | Dimensions | Bytes per Input (float16) | File Size (1,000,000 inputs) |
+| Model               | Dimensions | Bytes per Input  | File Size per 1,000,000 inputs |
 | ------------------- |  ---------- | ------------------------- | ---------------------------- |
 | `all-MiniLM-L12-v2` |    384        | 768 bytes                 | ~750 MB                      |
 | `e5-base-v2`        |     768        | 1,536 bytes               | ~1.5 GB                      |
@@ -476,7 +476,7 @@ The rolling files have no upper limit on their size, and will require manual pru
 
 This intentional decision reflects the nature that training datasets represent a fixed point in time, and should not be modified after being ingested. Throughout this codebase, there are checks for a model's baseline type, and if that baseline is set to `training', write operations are skipped.
 
-As a way of making this system work where there is no training data provided, the system will attempt to use hybrid mode using the rolling file path locations as replacements for the training file paths when generating COS/EUC scores for new inputs.
+As a way of making this system work where there is no training data provided, the system will attempt to use hybrid mode using the rolling file path locations as replacements for the training file paths when generating COS/EUC/PSI scores for new inputs.
 
 In hybrid mode, because the first N vectors are considered training vectors, and the last K vectors are considered rolling vectors, there will be a duration of time that training and rolling datasets will be equivalents. For example, when the system only contains 1500 vectors, all 1500 will be considered `training` and the most recent 1000 would be considered `rolling`.
 
