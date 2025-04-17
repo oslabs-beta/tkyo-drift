@@ -136,11 +136,7 @@ dist
 .pnp.*
 
 # AI testing Model
-aiModel/*
-
+data/
 .DS_Store
-aiModel/
-
-
-node_modules/
-data/small_thoughts-train.arrow
+__pycache__
+tkyoData/
