@@ -83,9 +83,7 @@ For each individual input to the TKYODrift, the following workflow is performed:
 7. Capture scalar metrics.
 8. Append results to `COS_log.csv`, `EUC_log.csv`, and scalar metric files.
 
-```
 Note that the size of input/output text, embedding dimensions, and how many embedding models are chosen will influence the speed of the workflow. Regardless, tkyoDrift() is asynchronous, and it should not impact your workflow unless you expect a sustained high volume of user inputs per second.
-```
 
 # How do you install this thing?
 
@@ -131,9 +129,7 @@ You can interact with this library in a couple ways;
 - Request a CLI print out of the scalar metric's log using `tkyo scalar`
 - Export the logs into your external Data Viz platform
 
-```
 * We recommend that you do this from a strong PC, and then transfer your data into the appropriate folders. Due to a number of factors (amount of data, length of individual records, lack of CUDA access, lack of memory, lack of cpu cores, count of embedding models) this process can take an exceptionally long time to complete depending on the size of your training data.
-```
 
 There is also a small training file downloader script in the util folder called downloadTrainingData.py that you can run to grab the training data from hugging face if you happen to be using a model for your workflow from there.
 
@@ -221,11 +217,9 @@ You can call on the training embedding function using the cli command `tkyo trai
 - Embeds each input in chunks of 10, with 8 in parallel for performance, once for each model type.
 - If needed, calculates the average values for embeddings that are longer than 512 tokens by embedding 512 token chunks and then averaging across the set.
 
-```
 IMPORTANT! The set training data file should ONLY be run when you intend on replacing the existing tkyoDrift training data file set. This function will obliterate any existing tkyoDrift training files, by design.
 
 There should only be ONE set of ideal embeddings for your training data, per ioType.
-```
 
 As an additional note, the batch embedding tool is designed to indiscriminantly ingest all `.arrow` files in the directory you specify. If needed, nest your training data in a subdirectory to avoid ingesting data other than your intended files.
 
@@ -331,19 +325,16 @@ ID, TIMESTAMP, I/O TYPE, SEMANTIC ROLLING EUC, SEMANTIC TRAINING EUC, CONCEPT RO
 - Additional metadata like ioType, date and UUIDs are included for tracking.
 - Neither the log, nor the binary files, contain your users input or AI outputs. This data is not necessary to calculate drift, and its exclusion is an intentional choice for data privacy.
 
-```
 Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your conceptual embedding model from "concept" to "vibes", when writing to the log the makeLogEntry method of the Drift Class would work, but the log parser would fail.
 
 Keep in mind, however, you can change models any time you like, though that will brick your drift calculations for a different reason; your inputs/outputs will be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
-```
 
 ## CLI Tools
 
 Invoke the logs with `tkyo cos <number of days>` and `tkyo scalar` for each of their respective datasets. The `tkyo cos` command uses the `printLogCLI.js` script to do the following, while the `tkyo scalar` command invokes the `printScalarCLI.js` below this block. In general, however, you should link your external data visualization tools to the log folder in the data directory.
 
-```
 Note that if you are installing tkyo locally, you need to add `npx` before your tkyo commands. `tkyo` as a standalone command only works if the CLI tool is installed globally (or linked globally). `npx` runs the CLI tool without requiring global installation.
-```
+
 ### `printLogCLI.js`
 
 Usage: `tkyo cos <number of days>`
@@ -352,11 +343,9 @@ Usage: `tkyo cos <number of days>`
 
 Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
-```
 Note: The first record you enter into this system will always show that there is 0 drift when compared against the rolling data set. This is because the rolling dataset will be compared against itself at that point and there will be no drift to detect. This is not a known issue, and was an intentional choice. The alternative would be to exclude a write to the `COS_log.csv` and `EUC_log.csv` logs on first write.
 
 If this bothers you, you can remove line 2 from the COS and EUC logs after you use this system at least twice.
-```
 
 ### `printScalarCLI.js`
 
@@ -377,9 +366,7 @@ The scalar metrics the system is currently tracking are listed below:
 | `punctuationDensity` | Ratio of punctuation to characters (captures tone/stylistics)  |
 | `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)      |
 
-```
 Note: Without batch embedding your training data, scalar metric comparison will run in hybrid mode, which compares the oldest 10,000 inputs against the most recent 1,000 inputs from the rolling file. This simulates a baseline when you haven't provided one through the training batch embedding process. These values can be modified in `util/loadScalarMetrics.js` if needed.
-```
 
 # Architecture Decisions
 
@@ -431,9 +418,7 @@ This results in four cosine similarity and euclidean distance comparisons (assum
 
 Note that once the execution context window closes for the processing input, models are naturally unloaded. Unless you feel inclined to download and store the models locally in your production pipeline, this is a necessary and unavoidable ~500ms workflow speed penalty. See the Production Impact section above for more information on how to minimize this impact.
 
-```
 Drift detection in the scalar metrics is ONLY available when a training dataset is provided, as scalar metrics are comparisons in distribution shape. In other words, without both distributions to compare against, there is no comparison to make.
-```
 
 ### Baseline Types
 
@@ -468,9 +453,7 @@ Note: 1 MB = 1,048,576 bytes (binary MB), but here we're rounding to 1 MB = 1,00
 
 Scalar files are negligibly large, and even with 1 million records, they should be less than 250 MBs. Additionally, the Log files themselves are miniscule.
 
-```
 The rolling files have no upper limit on their size, and will require manual pruning eventually depending on your workflow's throughput. Incidentally, if you do not have access to your training data (you may be using a 3rd party model without a published data set) you may benefit from renaming your rolling files to training files after you have accumulated at least 10,000 entries.
-```
 
 **_Write operations are performed on only the rolling file set, as training files are explicitly and intentionally excluded from write operations outside of the batched training embedding pipeline._**
 
@@ -496,9 +479,7 @@ HNSW (Hierarchical Navigable Small World) allows us to support approximate neare
 
 HNSW creation is factored into the `readFromBin()` model class method (which calls on `pythonHNSW.py`), and is fast enough that we re-calculate the HNSW on every read.
 
-```
 If this feels inefficient to you, the code in pythonHNSW.py can be refactored to use the saveIndex and loadIndex methods an HNSW index file read an existing index from disk. @ 50,000 embeddings, building the HNSW added 5ms to the process so we opted not take this step.
-```
 
 # The Math
 
@@ -545,9 +526,7 @@ Notably, this is a tradeoff between accuracy and speed, as KMeans cluster analys
 
 This system uses `(num_of_clusters = int(np.sqrt(num_vectors / 2)*10))` to determine the number of clusters to generate, as we do not have the ability to use the elbow method to determine the proper value for K.
 
-```
 Building the Kmeans analysis of your training data can be slow. Like REALLY slow. Unbelievably, unbearably slow. The K value we pick might be too large for your PC, and if it is, you can scale down that *10 to *5, or *1 if needed in the pythonKMeans.py file.
-```
 
 ## Scalar Metrics
 
