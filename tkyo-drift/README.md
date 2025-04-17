@@ -33,7 +33,7 @@ Use it to answer questions like:
 - "Did a model update change how we paraphrase?"
 - "Are the kids using newfangled words that don’t make any sense?"
 
-Just keep in mind that this tool doesn't tell you why you are drifting, only that you are, by how much, where, when, and in what direction.
+Just keep in mind that this tool doesn't tell you why you are drifting, only that you are, by how much, where, and when.
 
 ## Table of Contents
 
@@ -83,9 +83,7 @@ For each individual input to the TKYODrift, the following workflow is performed:
 7. Capture scalar metrics.
 8. Append results to `COS_log.csv`, `EUC_log.csv`, and scalar metric files.
 
-```
 Note that the size of input/output text, embedding dimensions, and how many embedding models are chosen will influence the speed of the workflow. Regardless, tkyoDrift() is asynchronous, and it should not impact your workflow unless you expect a sustained high volume of user inputs per second.
-```
 
 # How do you install this thing?
 
@@ -104,7 +102,7 @@ pip install -r ./node_modules/tkyo-drift/requirements.txt
 3. Import tkyoDrift into your AI workflow pages:
 
 ```js
-import tkyoDrift from 'tkyoDrift'
+import tkyoDrift from 'tkyodrift'
 ```
 
 4. Add a function call to `tkyoDrift(text, inputType)` passing in your text and input type name:
@@ -129,11 +127,9 @@ You can interact with this library in a couple ways;
 - Dispatch training data through a batch upload\* using `tkyo train <path to data> <column name> <ioType>`
 - Request a CLI print out of the Cosine Similarity log's summary using `tkyo <number of days>`
 - Request a CLI print out of the scalar metric's log using `tkyo scalar`
-- Export the logs into your Data Viz platform
+- Export the logs into your external Data Viz platform
 
-```
-* Do this from a strong PC, and then copy your data into the appropriate folders. Due to a number of factors (amount of data, length of individual records, lack of CUDA access, lack of memory, lack of cpu cores, count of embedding models) this process can take an exceptionally long time to complete.
-```
+* We recommend that you do this from a strong PC, and then transfer your data into the appropriate folders. Due to a number of factors (amount of data, length of individual records, lack of CUDA access, lack of memory, lack of cpu cores, count of embedding models) this process can take an exceptionally long time to complete depending on the size of your training data.
 
 There is also a small training file downloader script in the util folder called downloadTrainingData.py that you can run to grab the training data from hugging face if you happen to be using a model for your workflow from there.
 
@@ -188,7 +184,7 @@ The result is a production-safe drift observability layer that provides transpar
 | Initialize Model File Pathing     | 0.06          | 0.01%           | 0           |
 | Construct Model Combinations      | 0.02          | 0.00%           | 0           |
 
-This table represents a sample runtime breakdown of the one-off embedding flow, measured using the default models in a local Node.js environment with this hardware:
+This table represents a sample runtime breakdown of the one-off embedding flow, measured using the default models in a local Node.js environment running on CPU encoding with this hardware:
 
 ![Sample system specs: Intel Core i9 1300KF with 32 gbs of ram.](https://github.com/oslabs-beta/tkyo-drift/raw/dev/tkyo-drift/assets/hardware.png)
 
@@ -214,18 +210,16 @@ For higher-frequency use cases (e.g., token-level drift or live CoT chains), we 
 
 Usage: `tkyo train <path to data> <column name> <ioType>`
 
-You can call on the training embedding function using the cli command `tkyo train <path to data> <column name> <ioType>`. This will call the `tkyoDriftSetTraining.js(filepath, columnName, ioType)` function which passes in your arguments and handles full dataset ingestion for baseline creation. It:
+You can call on the training embedding function using the cli command `tkyo train`. This will call the `tkyoDriftSetTraining.js(filepath, columnName, ioType)` function which passes in your arguments and handles full dataset ingestion for baseline creation. It:
 
 - Accepts a filepath that contains `columnName` and how you want to reference it as `ioType`.
 - Captures text level, model independent scalar metrics.
 - Embeds each input in chunks of 10, with 8 in parallel for performance, once for each model type.
 - If needed, calculates the average values for embeddings that are longer than 512 tokens by embedding 512 token chunks and then averaging across the set.
 
-```
 IMPORTANT! The set training data file should ONLY be run when you intend on replacing the existing tkyoDrift training data file set. This function will obliterate any existing tkyoDrift training files, by design.
 
 There should only be ONE set of ideal embeddings for your training data, per ioType.
-```
 
 As an additional note, the batch embedding tool is designed to indiscriminantly ingest all `.arrow` files in the directory you specify. If needed, nest your training data in a subdirectory to avoid ingesting data other than your intended files.
 
@@ -331,19 +325,16 @@ ID, TIMESTAMP, I/O TYPE, SEMANTIC ROLLING EUC, SEMANTIC TRAINING EUC, CONCEPT RO
 - Additional metadata like ioType, date and UUIDs are included for tracking.
 - Neither the log, nor the binary files, contain your users input or AI outputs. This data is not necessary to calculate drift, and its exclusion is an intentional choice for data privacy.
 
-```
 Note: if you add or remove model types to the tkyoDrift tracker, the log will break. Please ensure you clear any existing logs after altering the embedding model names. What we mean here, is that if you change your conceptual embedding model from "concept" to "vibes", when writing to the log the makeLogEntry method of the Drift Class would work, but the log parser would fail.
 
 Keep in mind, however, you can change models any time you like, though that will brick your drift calculations for a different reason; your inputs/outputs will be embedded with dissimilar methods, which would lead to inaccurate drift calculations.
-```
 
 ## CLI Tools
 
 Invoke the logs with `tkyo cos <number of days>` and `tkyo scalar` for each of their respective datasets. The `tkyo cos` command uses the `printLogCLI.js` script to do the following, while the `tkyo scalar` command invokes the `printScalarCLI.js` below this block. In general, however, you should link your external data visualization tools to the log folder in the data directory.
 
-```
 Note that if you are installing tkyo locally, you need to add `npx` before your tkyo commands. `tkyo` as a standalone command only works if the CLI tool is installed globally (or linked globally). `npx` runs the CLI tool without requiring global installation.
-```
+
 ### `printLogCLI.js`
 
 Usage: `tkyo cos <number of days>`
@@ -352,11 +343,9 @@ Usage: `tkyo cos <number of days>`
 
 Parses `COS_log.csv` and displays violation counts and average cosine similarities over a selected number of days. Uses a color-coded table (green/yellow/red) to show severity of drift. Thresholds are set in this file, and should be adjusted to your expected precision needs.
 
-```
 Note: The first record you enter into this system will always show that there is 0 drift when compared against the rolling data set. This is because the rolling dataset will be compared against itself at that point and there will be no drift to detect. This is not a known issue, and was an intentional choice. The alternative would be to exclude a write to the `COS_log.csv` and `EUC_log.csv` logs on first write.
 
 If this bothers you, you can remove line 2 from the COS and EUC logs after you use this system at least twice.
-```
 
 ### `printScalarCLI.js`
 
@@ -377,9 +366,7 @@ The scalar metrics the system is currently tracking are listed below:
 | `punctuationDensity` | Ratio of punctuation to characters (captures tone/stylistics)  |
 | `uppercaseRatio`     | Ratio of uppercase letters (detects emphasis or acronyms)      |
 
-```
 Note: Without batch embedding your training data, scalar metric comparison will run in hybrid mode, which compares the oldest 10,000 inputs against the most recent 1,000 inputs from the rolling file. This simulates a baseline when you haven't provided one through the training batch embedding process. These values can be modified in `util/loadScalarMetrics.js` if needed.
-```
 
 # Architecture Decisions
 
@@ -408,7 +395,7 @@ So no, there's no good way to "freeze" a pipeline( ) and reload it faster... unl
 
 ### JS/Python Pipeline Split
 
-While the Xenova transformer library is a javascript equivalent of the Hugging Face python transformer library, the primary difference is that the former was made for JS by the xenova team while the latter was made for Python by huggingface themselves. The HF library allows for GPU acceleration, which is why it was chosen for batched calls. In either case, we are using the same transformer library for the same purpose. As such, Xenova/Hugging Face Transformers were chosen as the preferred choice of transformer libraries because:
+While the Xenova transformer library is a javascript equivalent of the Hugging Face python transformer library, the primary difference is that the former was made for JS by Xenova while the latter was made for Python by huggingface themselves. The HF library allows for GPU acceleration, which is why it was chosen for batched calls. In either case, we are using the same transformer library for the same purpose. As such, Xenova/Hugging Face Transformers were chosen as the preferred choice of transformer libraries because:
 
 - Embedding models are quite large, and including a wget or some other form of downloading models to run locally would require dealing with user authentication for the huggingface.com site, which we wanted to avoid.
 - People have good internet now, mostly, so we can get away with streaming the model conclusions to the workflow environment without dealing with a local model.
@@ -419,7 +406,7 @@ While the Xenova transformer library is a javascript equivalent of the Hugging F
 
 Drift is detected across combinations of:
 
-- `modelType`: semantic, concept
+- `modelType`: e5-base, mini-L12 by default
 - `ioType`: a string you specify
 - `baselineType`: rolling, training
 
@@ -431,9 +418,7 @@ This results in four cosine similarity and euclidean distance comparisons (assum
 
 Note that once the execution context window closes for the processing input, models are naturally unloaded. Unless you feel inclined to download and store the models locally in your production pipeline, this is a necessary and unavoidable ~500ms workflow speed penalty. See the Production Impact section above for more information on how to minimize this impact.
 
-```
 Drift detection in the scalar metrics is ONLY available when a training dataset is provided, as scalar metrics are comparisons in distribution shape. In other words, without both distributions to compare against, there is no comparison to make.
-```
 
 ### Baseline Types
 
@@ -459,7 +444,7 @@ This yields `(models * I/Os * baselines)` file combinations, and at the minimum 
 
 At the time of writing, the default models in this library have either 768 or 384 dimensions per input.
 
-| Model               | Dimensions | Bytes per Input (float16) | File Size (1,000,000 inputs) |
+| Model               | Dimensions | Bytes per Input  | File Size per 1,000,000 inputs |
 | ------------------- |  ---------- | ------------------------- | ---------------------------- |
 | `all-MiniLM-L12-v2` |    384        | 768 bytes                 | ~750 MB                      |
 | `e5-base-v2`        |     768        | 1,536 bytes               | ~1.5 GB                      |
@@ -468,15 +453,13 @@ Note: 1 MB = 1,048,576 bytes (binary MB), but here we're rounding to 1 MB = 1,00
 
 Scalar files are negligibly large, and even with 1 million records, they should be less than 250 MBs. Additionally, the Log files themselves are miniscule.
 
-```
 The rolling files have no upper limit on their size, and will require manual pruning eventually depending on your workflow's throughput. Incidentally, if you do not have access to your training data (you may be using a 3rd party model without a published data set) you may benefit from renaming your rolling files to training files after you have accumulated at least 10,000 entries.
-```
 
 **_Write operations are performed on only the rolling file set, as training files are explicitly and intentionally excluded from write operations outside of the batched training embedding pipeline._**
 
 This intentional decision reflects the nature that training datasets represent a fixed point in time, and should not be modified after being ingested. Throughout this codebase, there are checks for a model's baseline type, and if that baseline is set to `training', write operations are skipped.
 
-As a way of making this system work where there is no training data provided, the system will attempt to use hybrid mode using the rolling file path locations as replacements for the training file paths when generating COS/EUC scores for new inputs.
+As a way of making this system work where there is no training data provided, the system will attempt to use hybrid mode using the rolling file path locations as replacements for the training file paths when generating COS/EUC/PSI scores for new inputs.
 
 In hybrid mode, because the first N vectors are considered training vectors, and the last K vectors are considered rolling vectors, there will be a duration of time that training and rolling datasets will be equivalents. For example, when the system only contains 1500 vectors, all 1500 will be considered `training` and the most recent 1000 would be considered `rolling`.
 
@@ -496,9 +479,7 @@ HNSW (Hierarchical Navigable Small World) allows us to support approximate neare
 
 HNSW creation is factored into the `readFromBin()` model class method (which calls on `pythonHNSW.py`), and is fast enough that we re-calculate the HNSW on every read.
 
-```
 If this feels inefficient to you, the code in pythonHNSW.py can be refactored to use the saveIndex and loadIndex methods an HNSW index file read an existing index from disk. @ 50,000 embeddings, building the HNSW added 5ms to the process so we opted not take this step.
-```
 
 # The Math
 
@@ -545,9 +526,7 @@ Notably, this is a tradeoff between accuracy and speed, as KMeans cluster analys
 
 This system uses `(num_of_clusters = int(np.sqrt(num_vectors / 2)*10))` to determine the number of clusters to generate, as we do not have the ability to use the elbow method to determine the proper value for K.
 
-```
 Building the Kmeans analysis of your training data can be slow. Like REALLY slow. Unbelievably, unbearably slow. The K value we pick might be too large for your PC, and if it is, you can scale down that *10 to *5, or *1 if needed in the pythonKMeans.py file.
-```
 
 ## Scalar Metrics
 
