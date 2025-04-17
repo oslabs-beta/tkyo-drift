@@ -1,0 +1,12 @@
+pages:
+  stage: deploy
+  script:
+    - cd frontend
+    - npm install
+    - npm run build
+    - mv dist ../public
+  artifacts:
+    paths:
+    - public
+  only:
+  - master
